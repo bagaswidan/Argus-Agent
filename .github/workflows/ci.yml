@@ -25,14 +25,12 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Install package
-        id: install
         run: |
           pip install -e ".[dev]" 2>&1 | tee /tmp/install_out.txt
           exit ${PIPESTATUS[0]}
         shell: bash
 
       - name: Run test suite
-        id: tests
         run: |
           python -m pytest tests/ -q --tb=short 2>&1 | tee /tmp/test_out.txt
           exit ${PIPESTATUS[0]}
@@ -43,14 +41,13 @@ jobs:
       - name: Report failures as annotations
         if: failure()
         run: |
-          if [ -f /tmp/test_out.txt ]; then
-            grep -E "FAILED|ERROR|ModuleNotFound|ImportError" /tmp/test_out.txt | head -30 | while IFS= read -r line; do
-              echo "::error file=tests::$line"
-            done
-          fi
-          if [ -f /tmp/install_out.txt ]; then
-            grep -iE "error|failed|no matching|conflict" /tmp/install_out.txt | head -20 | while IFS= read -r line; do
-              echo "::error file=pyproject.toml::$line"
-            done
-          fi
+          {
+            echo "::group::test output"
+            tail -80 /tmp/test_out.txt 2>/dev/null || echo "NO TEST OUTPUT FILE"
+            echo "::endgroup::"
+            echo "::group::install output"
+            tail -30 /tmp/install_out.txt 2>/dev/null || echo "NO INSTALL OUTPUT FILE"
+            echo "::endgroup::"
+          } | sed 's/^/::error::/' || true
+          exit 0
         shell: bash
