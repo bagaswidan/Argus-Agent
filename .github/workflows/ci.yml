@@ -30,8 +30,18 @@ jobs:
         shell: bash
 
       - name: Run test suite
+        id: tests
         run: |
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q --tb=short 2>&1 | tee /tmp/test_out.txt
+          exit ${PIPESTATUS[0]}
         shell: bash
         env:
           PYTHONPATH: src
+
+      - name: Report failures as annotations
+        if: failure()
+        run: |
+          grep -E "FAILED|ERROR" /tmp/test_out.txt | head -30 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
+        shell: bash
