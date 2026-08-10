@@ -9,6 +9,8 @@ Blueprint source: Argus Engineering Specification v1.0 (PART 1).
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 # ---------------------------------------------------------------------------
 # Visi & Misi dari blueprint (PART 1 §2, §3)
 # ---------------------------------------------------------------------------
@@ -94,10 +96,46 @@ def wordmark_only() -> str:
 # ---------------------------------------------------------------------------
 # Rendered JPEG — mata + 8 mata satelit (konstitusi) + visi + pipeline
 # ---------------------------------------------------------------------------
-def render_logo_jpeg(path: str = "/tmp/argus_logo.jpg", width: int = 1000) -> str:
+_FONT_CANDIDATES = [
+    # Linux (Debian/Ubuntu)
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    # macOS
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/System/Library/Fonts/Helvetica.ttc",
+    "/Library/Fonts/Arial.ttf",
+    # Windows
+    "C:/Windows/Fonts/arialbd.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/segoeui.ttf",
+]
+
+_FONT_MONO_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    "/System/Library/Fonts/Menlo.ttc",
+    "/System/Library/Fonts/Supplemental/Courier New.ttf",
+    "C:/Windows/Fonts/consola.ttf",
+    "C:/Windows/Fonts/cour.ttf",
+]
+
+
+def _load_font(candidates: list[str], size: int):
+    from PIL import ImageFont
+
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:  # noqa: BLE001
+            continue
+    return ImageFont.load_default(size)
+
+
+def render_logo_jpeg(path: Optional[str] = None, width: int = 1000) -> str:
+    import tempfile
+    path = path or str(Path(tempfile.gettempdir()) / "argus_logo.jpg")
     import math
 
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     BG = (10, 10, 13)
     GOLD = (201, 168, 107)
@@ -106,9 +144,9 @@ def render_logo_jpeg(path: str = "/tmp/argus_logo.jpg", width: int = 1000) -> st
     TEXT = (232, 232, 234)
     DIM = (120, 120, 132)
 
-    font_big = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72)
-    font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 15)
-    font_tiny = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 12)
+    font_big = _load_font(_FONT_CANDIDATES, 72)
+    font_small = _load_font(_FONT_MONO_CANDIDATES, 15)
+    font_tiny = _load_font(_FONT_MONO_CANDIDATES, 12)
 
     h = 820
     img = Image.new("RGB", (width, h), BG)

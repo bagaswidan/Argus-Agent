@@ -213,6 +213,9 @@ def run_dashboard_in_thread(
     return server, t
 
 
-def create_dashboard_store(path: str = "/tmp/argus_dashboard.db") -> ObservabilityStore:
+def create_dashboard_store(path: Optional[str] = None) -> ObservabilityStore:
+    """Convenience factory; defaults to a tempfile path (cross-platform)."""
+    import tempfile
+    path = path or str(Path(tempfile.gettempdir()) / "argus_dashboard.db")
     """Convenience factory for a dashboard-backed store."""
     return create_obs_store(path)

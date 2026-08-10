@@ -82,12 +82,16 @@ def ask(prompt: str, model: str = typer.Option("Cadangan", help="Model/combo Omn
 @app.command()
 def curator(
     action: str = typer.Argument("status", help="status | review"),
-    db: str = typer.Option("/tmp/argus_usage.json", help="Path usage tracker"),
+    db: str = typer.Option("", help="Path usage tracker (default: tempdir)"),
     stale_days: float = typer.Option(30.0, help="Idle threshold (hari)"),
 ):
     """Self-evolution: cek/scan penggunaan capability (Phase 11)."""
     from argus.curator import create_curator, create_usage_tracker
 
+    if not db:
+        import tempfile
+        from pathlib import Path as _P
+        db = str(_P(tempfile.gettempdir()) / "argus_usage.json")
     tracker = create_usage_tracker(db)
     if action == "review":
         curator_engine = create_curator(tracker, stale_after_days=stale_days)
@@ -111,11 +115,15 @@ def curator(
 def dashboard(
     port: int = typer.Option(8787, help="Port untuk dashboard web"),
     host: str = typer.Option("127.0.0.1", help="Host bind"),
-    db: str = typer.Option("/tmp/argus_dashboard.db", help="Path observability store"),
+    db: str = typer.Option("", help="Path observability store (default: tempdir)"),
 ):
     """Jalankan web dashboard (Phase 6)."""
     from argus.dashboard import serve_dashboard, create_dashboard_store
 
+    if not db:
+        import tempfile
+        from pathlib import Path as _P
+        db = str(_P(tempfile.gettempdir()) / "argus_dashboard.db")
     store = create_dashboard_store(db)
     typer.echo(f"Argus Dashboard → http://{host}:{port}")
     typer.echo(f"Store          : {db}")
