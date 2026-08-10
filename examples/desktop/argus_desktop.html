@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argus Desktop — AI Agent OS</title>
+<style>
+  /* ============ DESIGN TOKENS ============ */
+  /* Dark theme (default) — Argus Panoptes night: near-black + gold */
+  :root, [data-theme="dark"] {
+    --bg: #0c0c0f;
+    --bg-2: #111114;
+    --surface: #16161a;
+    --surface-2: #1c1c21;
+    --hover: rgba(255,255,255,0.045);
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #ececee;
+    --text-2: #a3a3ad;
+    --text-3: #64646e;
+    --accent: #c9a86b;          /* Argus gold */
+    --accent-bright: #e8cd8e;
+    --accent-dim: rgba(201,168,107,0.12);
+    --accent-border: rgba(201,168,107,0.35);
+    --user-bubble: #1b1b20;
+    --ok: #7bc99a;
+    --err: #e07a7a;
+    --shadow: 0 8px 40px rgba(0,0,0,0.5);
+    --caret: #e8cd8e;
+  }
+  /* Bright theme — warm cream (Cursor-inspired) + gold accent */
+  [data-theme="bright"] {
+    --bg: #f4f3ef;
+    --bg-2: #efeee9;
+    --surface: #faf9f6;
+    --surface-2: #ffffff;
+    --hover: rgba(38,37,30,0.05);
+    --border: rgba(38,37,30,0.10);
+    --border-strong: rgba(38,37,30,0.18);
+    --text: #26251e;
+    --text-2: #5c5b54;
+    --text-3: #8a8982;
+    --accent: #a8813a;
+    --accent-bright: #8a6528;
+    --accent-dim: rgba(168,129,58,0.10);
+    --accent-border: rgba(168,129,58,0.35);
+    --user-bubble: #eceae3;
+    --ok: #1f8a65;
+    --err: #cf2d56;
+    --shadow: 0 8px 40px rgba(38,37,30,0.10);
+    --caret: #8a6528;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  /* ============ APP WINDOW ============ */
+  .app {
+    width: 1180px; max-width: 100%; height: 840px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  /* Title bar */
+  .titlebar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 16px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .dots { display: flex; gap: 7px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot-r { background: #ff5f56; } .dot-y { background: #ffbd2e; } .dot-g { background: #27c93f; }
+  .brand { display: flex; align-items: center; gap: 9px; margin-left: 8px; }
+  .brand .mark {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--accent); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  }
+  .brand .name { font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+  .brand .ver { font-size: 10.5px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .model-pill {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--text-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 12px; background: var(--surface);
+  }
+  .model-pill .led { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .model-pill b { color: var(--accent); font-weight: 500; }
+  /* theme toggle */
+  .toggle {
+    display: flex; align-items: center; gap: 4px;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px; background: var(--surface); cursor: pointer;
+  }
+  .toggle button {
+    border: none; background: transparent; cursor: pointer;
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    color: var(--text-3); font-family: 'Inter', sans-serif; font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .toggle button.active { background: var(--accent); color: var(--bg); }
+  /* ============ BODY ============ */
+  .body { display: flex; flex: 1; min-height: 0; }
+  /* Sidebar */
+  .sidebar {
+    width: 250px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--bg-2);
+    display: flex; flex-direction: column;
+  }
+  .side-top { padding: 12px 12px 8px; border-bottom: 1px solid var(--border); }
+  .new-chat {
+    display: flex; align-items: center; gap: 9px;
+    width: 100%; padding: 9px 12px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border); border-radius: 8px;
+    color: var(--accent); font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .new-chat:hover { background: var(--accent); color: var(--bg); }
+  .chat-list { flex: 1; overflow-y: auto; padding: 8px 8px; }
+  .list-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px;
+    color: var(--text-3); padding: 10px 10px 6px;
+  }
+  .chat-item {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 9px 10px; border-radius: 8px; cursor: pointer;
+    transition: background 0.12s;
+  }
+  .chat-item:hover { background: var(--hover); }
+  .chat-item.active { background: var(--accent-dim); }
+  .chat-item .t { font-size: 12.5px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-item.active .t { color: var(--accent); }
+  .chat-item .m { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-item .time { font-size: 10px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+  .side-bottom { padding: 10px 12px; border-top: 1px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 9px; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: var(--accent-dim); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .user-row .u { font-size: 12.5px; font-weight: 600; }
+  .user-row .s { font-size: 10.5px; color: var(--text-3); }
+  .user-row .gear { margin-left: auto; color: var(--text-3); font-size: 13px; cursor: pointer; }
+  /* Main chat */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chat-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-head .title { font-size: 13px; font-weight: 600; }
+  .chat-head .sub { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+  .chat-head .spacer { flex: 1; }
+  .chat-head .tool { font-size: 11px; color: var(--text-3); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  /* messages */
+  .chat-area { flex: 1; overflow-y: auto; padding: 22px 24px 10px; }
+  .msg { display: flex; gap: 13px; margin-bottom: 20px; }
+  .msg .ava {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .msg.user .ava { background: var(--user-bubble); color: var(--text-2); border: 1px solid var(--border); }
+  .msg.assistant .ava { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); }
+  .msg .body { flex: 1; min-width: 0; display: block; }
+  .msg .who { font-size: 10.5px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+  .msg .who b { color: var(--text-2); font-weight: 500; }
+  .msg.user .content {
+    font-size: 13.5px; line-height: 1.6;
+    background: var(--user-bubble);
+    border: 1px solid var(--border); border-radius: 10px 10px 10px 2px;
+    padding: 11px 14px; color: var(--text);
+    margin-top: 2px;
+  }
+  .msg.assistant .content { font-size: 13.5px; line-height: 1.65; margin-top: 2px; }
+  .msg.assistant .content .k { color: var(--accent); }
+  .msg.assistant .content .dim { color: var(--text-3); }
+  .msg.assistant .content .ok { color: var(--ok); }
+  .msg.assistant .content pre {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; margin: 8px 0;
+    overflow-x: auto; color: var(--text-2);
+  }
+  .msg.assistant .content pre .c { color: var(--accent); }
+  .msg.assistant .content pre .g { color: var(--ok); }
+  .msg.assistant .content pre .m { color: var(--text-3); }
+  .tool-row {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-3); margin-top: 8px;
+  }
+  .tool-row .tick { color: var(--ok); }
+  .tool-row .name { color: var(--text-2); }
+  .thinking { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; padding: 4px 0; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* composer */
+  .composer { flex-shrink: 0; padding: 12px 20px 16px; }
+  .input-box {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 10px;
+    padding: 12px 16px; transition: border 0.15s, box-shadow 0.15s;
+  }
+  .input-box:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .input-box .ps { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 14px; }
+  .input-box .text { flex: 1; font-size: 13.5px; color: var(--text); }
+  .input-box .caret { width: 7px; height: 16px; background: var(--caret); animation: blink 1.1s steps(2) infinite; border-radius: 1px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .input-box .send {
+    border: none; cursor: pointer;
+    background: var(--accent); color: var(--bg);
+    border-radius: 7px; padding: 6px 14px;
+    font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
+  }
+  .hints { display: flex; gap: 16px; padding: 8px 4px 0; font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+  .hints kbd {
+    font-size: 10px; color: var(--text-2);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+    background: var(--surface);
+  }
+  .hints .right { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    <div class="brand">
+      <div class="mark">◆</div>
+      <div>
+        <div class="name">Argus</div>
+        <div class="ver">v1.1.0 · desktop</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="model-pill"><span class="led"></span>deepseek-v4-flash <b>via</b> omniroute</div>
+      <div class="toggle" id="themeToggle">
+        <button data-theme-val="bright">☀ Bright</button>
+        <button data-theme-val="dark" class="active">☾ Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="side-top">
+        <div class="new-chat">+ New chat</div>
+      </div>
+      <div class="chat-list">
+        <div class="list-label">Recent</div>
+        <div class="chat-item active">
+          <div class="t">Deploy argus to staging</div>
+          <div class="m">✓ Smoke test 10/10, 361 tests pass</div>
+          <div class="time">now</div>
+        </div>
+        <div class="chat-item">
+          <div class="t">Design Panoptes logo</div>
+          <div class="m">Eye + vision & mission from blueprint</div>
+          <div class="time">12m</div>
+        </div>
+        <div class="chat-item">
+          <div class="t">Audit blueprint compliance</div>
+          <div class="m">Contracts, Security, Extension, Runtime…</div>
+          <div class="time">1h</div>
+        </div>
+        <div class="list-label">Archived</div>
+        <div class="chat-item">
+          <div class="t">Fix OmniRoute Deepseek combo</div>
+          <div class="m">connectionId 503 → hot reload OK</div>
+          <div class="time">2h</div>
+        </div>
+      </div>
+      <div class="side-bottom">
+        <div class="user-row">
+          <div class="avatar">B</div>
+          <div>
+            <div class="u">Bagas</div>
+            <div class="s">Local · deepseek-v4-flash</div>
+          </div>
+          <div class="gear">⚙</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="chat-head">
+        <div class="title">Deploy argus to staging</div>
+        <div class="sub">361 tests · blueprint 90%</div>
+        <div class="spacer"></div>
+        <div class="tool">⋮</div>
+      </div>
+
+      <div class="chat-area">
+        <div class="msg user">
+          <div class="ava">B</div>
+          <div class="body">
+            <div class="who">bagas <b>·</b> 13:47</div>
+            <div class="content">Run the smoke test then deploy argus to staging, show me the results.</div>
+          </div>
+        </div>
+
+        <div class="msg assistant">
+          <div class="ava">◆</div>
+          <div class="body">
+            <div class="who">argus <b>·</b> 13:47</div>
+            <div class="content">
+              On it. Running the pipeline: <span class="k">smoke → verify → deploy</span>.
+              <pre><span class="c">$ argus</span> smoke
+<span class="g">✓</span> Config · Workspace · Memory · Router
+<span class="g">✓</span> Capability · Orchestrator · Reflection
+<span class="g">✓</span> Observability · SecretVault · Gateway
+<span class="m">──────────────────────────────</span>
+<span class="g">ALL SYSTEMS OPERATIONAL</span> · <span class="m">10/10</span></pre>
+              <div class="tool-row"><span class="tick">✓</span> <span class="name">capability.execute</span> · <span>2.3ms</span> · <span class="name">security.check</span> · <span>0.8ms</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg assistant">
+          <div class="ava">◆</div>
+          <div class="body">
+            <div class="who">argus <b>·</b> 13:47</div>
+            <div class="thinking"><div class="spinner"></div>preparing deployment…</div>
+          </div>
+        </div>
+
+        <div class="msg assistant">
+          <div class="ava">◆</div>
+          <div class="body">
+            <div class="who">argus <b>·</b> 13:48</div>
+            <div class="content">
+              <span class="ok">✓ Deployment complete</span>
+              <pre><span class="g">✓</span> build wheel <span class="m">· 21 deps</span>
+<span class="g">✓</span> security gate <span class="m">· zero-trust passed</span>
+<span class="g">✓</span> workflow checkpoint <span class="m">· step 3/3</span>
+<span class="g">✓</span> staging live <span class="m">· https://staging.argus.local</span></pre>
+              Anything else I should do?
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Composer -->
+      <div class="composer">
+        <div class="input-box">
+          <span class="ps">›</span>
+          <span class="text">continue with production verification</span>
+          <span class="caret"></span>
+          <button class="send">Send ↵</button>
+        </div>
+        <div class="hints">
+          <span><kbd>↵</kbd> send</span>
+          <span><kbd>/</kbd> command</span>
+          <span><kbd>↑↓</kbd> history</span>
+          <span class="right"><kbd>⌘K</kbd> command palette</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Theme toggle (bright / dark)
+  const toggle = document.getElementById('themeToggle');
+  const buttons = toggle.querySelectorAll('button');
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.themeVal === t));
+  }
+  buttons.forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeVal)));
+</script>
+</body>
+</html>
