@@ -9,8 +9,9 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Awaitable, Callable, Optional
+from typing import Any
 
 
 class StreamCancelled(Exception):
@@ -25,7 +26,7 @@ class StreamChunk:
     data: str
     sequence: int = 0
     done: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     at: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,7 +49,7 @@ class StreamResult:
     chunk_count: int = 0
     duration_ms: int = 0
     cancelled: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class StreamingManager:
@@ -62,7 +63,7 @@ class StreamingManager:
     async def stream(
         self,
         producer: Callable[[Callable[[str], Awaitable[None]]], Awaitable[Any]],
-        stream_id: Optional[str] = None,
+        stream_id: str | None = None,
         buffer: int = 32,
     ) -> AsyncIterator[StreamChunk]:
         """Run a producer that calls ``emit(chunk_text)``; yield chunks.
@@ -74,6 +75,7 @@ class StreamingManager:
 
             async for chunk in manager.stream(run):
                 print(chunk.data)
+
         """
         sid = stream_id or uuid.uuid4().hex[:12]
         queue: asyncio.Queue = asyncio.Queue(maxsize=buffer)
@@ -97,7 +99,7 @@ class StreamingManager:
                 await queue.put(StreamChunk(stream_id=sid, data="", done=True))
             except asyncio.CancelledError:
                 await queue.put(StreamChunk(stream_id=sid, data="", done=True, error="cancelled"))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 await queue.put(StreamChunk(stream_id=sid, data="", done=True, error=str(exc)))
 
         task = asyncio.create_task(producer_runner())
@@ -131,14 +133,14 @@ class StreamingManager:
 async def collect_stream(
     manager: StreamingManager,
     producer: Callable[[Callable[[str], Awaitable[None]]], Awaitable[Any]],
-    stream_id: Optional[str] = None,
+    stream_id: str | None = None,
 ) -> StreamResult:
     """Convenience: run a stream to completion and aggregate it."""
     start = time.time()
     full: list[str] = []
     count = 0
     cancelled = False
-    error: Optional[str] = None
+    error: str | None = None
     sid = stream_id or uuid.uuid4().hex[:12]
     async for chunk in manager.stream(producer, stream_id=sid):
         if chunk.data:

@@ -2,10 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+
 import pytest
 
-from argus.runtime.workflow import WorkflowEngine, WorkflowStep, WorkflowError, create_workflow_engine
 from argus.runtime.state import WorkflowState
+from argus.runtime.workflow import (
+    WorkflowError,
+    WorkflowStep,
+    create_workflow_engine,
+)
 
 
 class TestWorkflowEngine:

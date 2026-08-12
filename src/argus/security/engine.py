@@ -6,7 +6,7 @@ is checked against a permission policy before it runs. Default deny.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 class SecurityError(Exception):
@@ -99,7 +99,7 @@ class SecurityEngine:
         decision = self.check(req)
         if not decision.allowed:
             raise SecurityError(
-                f"Access denied: {req.subject} → {req.action} on {req.resource} ({decision.reason})"
+                f"Access denied: {req.subject} → {req.action} on {req.resource} ({decision.reason})",
             )
 
     def can(self, subject: str, resource: str, action: str = "execute") -> bool:

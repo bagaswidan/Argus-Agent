@@ -5,8 +5,8 @@ Typed contracts for inter-module communication per Engineering Spec §18, §29.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 class ContractValidationError(ValueError):
@@ -14,7 +14,7 @@ class ContractValidationError(ValueError):
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass
@@ -79,7 +79,7 @@ class ExecutionResultContract:
 
     success: bool
     output: Any = None
-    error: Optional[FailureObject] = None
+    error: FailureObject | None = None
     metrics: dict[str, float] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
     duration_ms: int = 0

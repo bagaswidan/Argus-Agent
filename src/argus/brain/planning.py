@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 class PlanError(Exception):
@@ -91,7 +91,7 @@ class PlanningEngine:
         self._plans[plan.plan_id] = plan
         return plan
 
-    def get_plan(self, plan_id: str) -> Optional[ExecutionPlan]:
+    def get_plan(self, plan_id: str) -> ExecutionPlan | None:
         return self._plans.get(plan_id)
 
     def _validate_graph(self, plan: ExecutionPlan) -> None:
@@ -146,7 +146,7 @@ class PlanningEngine:
                         params=s.params,
                         depends_on=s.depends_on,
                         status="failed",
-                    )
+                    ),
                 )
             else:
                 new_steps.append(s)
@@ -160,7 +160,7 @@ class PlanningEngine:
                     depends_on=list(spec.get("depends_on", [])),
                     estimated_cost=float(spec.get("estimated_cost", 0.0)),
                     estimated_duration_ms=int(spec.get("estimated_duration_ms", 1000)),
-                )
+                ),
             )
 
         new_plan = ExecutionPlan(goal=plan.goal)

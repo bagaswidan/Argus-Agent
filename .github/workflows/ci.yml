@@ -38,12 +38,32 @@ jobs:
         env:
           PYTHONPATH: src
 
+      - name: Lint with ruff
+        run: |
+          ruff check src 2>&1 | tee /tmp/ruff_out.txt
+          exit ${PIPESTATUS[0]}
+        shell: bash
+
+      - name: Type check with mypy
+        run: |
+          mypy src 2>&1 | tee /tmp/mypy_out.txt
+          exit ${PIPESTATUS[0]}
+        shell: bash
+        env:
+          PYTHONPATH: src
+
       - name: Report failures as annotations
         if: failure()
         run: |
           {
             echo "::group::test output"
             tail -80 /tmp/test_out.txt 2>/dev/null || echo "NO TEST OUTPUT FILE"
+            echo "::endgroup::"
+            echo "::group::ruff output"
+            tail -40 /tmp/ruff_out.txt 2>/dev/null || echo "NO RUFF OUTPUT FILE"
+            echo "::endgroup::"
+            echo "::group::mypy output"
+            tail -40 /tmp/mypy_out.txt 2>/dev/null || echo "NO MYPY OUTPUT FILE"
             echo "::endgroup::"
             echo "::group::install output"
             tail -30 /tmp/install_out.txt 2>/dev/null || echo "NO INSTALL OUTPUT FILE"

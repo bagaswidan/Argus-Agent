@@ -5,30 +5,30 @@ and Extension Manager. Extensions implement capabilities outside core.
 """
 from __future__ import annotations
 
+from argus.extension.manager import ExtensionManager, ExtensionState, create_extension_manager
 from argus.extension.manifest import (
     ExtensionManifest,
     ExtensionType,
-    load_manifest,
     ManifestValidationError,
+    load_manifest,
 )
 from argus.extension.rpc import (
-    RpcResponse,
     ExtensionRpc,
-    create_rpc_response,
     RpcError,
+    RpcResponse,
+    create_rpc_response,
 )
-from argus.extension.manager import ExtensionManager, ExtensionState, create_extension_manager
 
 __all__ = [
-    "ExtensionManifest",
-    "ExtensionType",
-    "load_manifest",
-    "ManifestValidationError",
-    "RpcResponse",
-    "ExtensionRpc",
-    "create_rpc_response",
-    "RpcError",
     "ExtensionManager",
+    "ExtensionManifest",
+    "ExtensionRpc",
     "ExtensionState",
+    "ExtensionType",
+    "ManifestValidationError",
+    "RpcError",
+    "RpcResponse",
     "create_extension_manager",
+    "create_rpc_response",
+    "load_manifest",
 ]

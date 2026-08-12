@@ -6,7 +6,6 @@ No LLM calls are made; this is pure scoring logic.
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Tuple
 
 
 class ThinkingMode(Enum):
@@ -31,7 +30,7 @@ class ThinkingMode(Enum):
         return _DESCRIPTIONS[self]
 
 
-_TEMP_RANGES: dict[ThinkingMode, Tuple[float, float]] = {
+_TEMP_RANGES: dict[ThinkingMode, tuple[float, float]] = {
     ThinkingMode.FAST: (0.0, 0.2),
     ThinkingMode.BALANCED: (0.3, 0.6),
     ThinkingMode.DEEP: (0.7, 0.9),
@@ -52,7 +51,7 @@ _DESCRIPTIONS: dict[ThinkingMode, str] = {
 }
 
 # Representative profile: (complexity, ambiguity, novelty, risk)
-_PROFILES: dict[ThinkingMode, Tuple[float, float, float, float]] = {
+_PROFILES: dict[ThinkingMode, tuple[float, float, float, float]] = {
     ThinkingMode.FAST: (0.1, 0.0, 0.0, 0.0),
     ThinkingMode.BALANCED: (0.5, 0.4, 0.4, 0.4),
     ThinkingMode.DEEP: (0.9, 0.9, 0.5, 0.4),
@@ -103,7 +102,7 @@ class ThinkingSelector:
                 raise ValueError(f"{name} must not be NaN")
             if not (0.0 <= value <= 1.0):
                 raise ValueError(
-                    f"{name} must be between 0.0 and 1.0, got {value}"
+                    f"{name} must be between 0.0 and 1.0, got {value}",
                 )
 
         input_vec = (complexity, ambiguity, novelty, risk)
@@ -118,7 +117,7 @@ class ThinkingSelector:
     def _distance(
         self,
         mode: ThinkingMode,
-        input_vec: Tuple[float, ...],
+        input_vec: tuple[float, ...],
     ) -> float:
         profile = _PROFILES[mode]
         return sum(

@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class ExtensionType(str, Enum):
@@ -54,7 +54,7 @@ class ExtensionManifest:
             raise ManifestValidationError("entry_point is required")
         if self.min_core_version and not _is_semver(self.min_core_version):
             raise ManifestValidationError(
-                f"min_core_version must be semver, got {self.min_core_version!r}"
+                f"min_core_version must be semver, got {self.min_core_version!r}",
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -74,7 +74,7 @@ class ExtensionManifest:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ExtensionManifest":
+    def from_dict(cls, data: dict[str, Any]) -> ExtensionManifest:
         return cls(
             extension_id=data["extension_id"],
             name=data["name"],

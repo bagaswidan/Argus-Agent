@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from argus.brain.planning import PlanningEngine, PlanError, create_planning_engine
+from argus.brain.planning import PlanError, create_planning_engine
 
 
 class TestPlanningEngine:
@@ -118,7 +118,7 @@ class TestPlanningEngine:
             plan,
             failed_step_ids=["deploy"],
             replacement_actions=[
-                {"action": "deploy-fallback", "id": "deploy2", "depends_on": ["build"]}
+                {"action": "deploy-fallback", "id": "deploy2", "depends_on": ["build"]},
             ],
         )
         assert new_plan.plan_id != plan.plan_id

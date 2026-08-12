@@ -7,8 +7,9 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 
 @dataclass
@@ -36,11 +37,11 @@ class Scheduler:
     def submit(
         self,
         fn: Callable[..., Awaitable[Any]],
-        *args,
+        *args: Any,
         name: str = "",
         priority: int = 0,
         timeout: float = 30.0,
-        **kwargs,
+        **kwargs: Any,
     ) -> ScheduledTask:
         """Submit a task. Returns the task handle immediately."""
         task = ScheduledTask(name=name, priority=priority, timeout=timeout)
@@ -52,7 +53,7 @@ class Scheduler:
         task._kwargs = kwargs  # type: ignore[attr-defined]
         return task
 
-    async def run_once(self) -> Optional[ScheduledTask]:
+    async def run_once(self) -> ScheduledTask | None:
         """Execute the next highest-priority task to completion. Returns the task."""
         if not self._queue:
             return None
@@ -68,7 +69,7 @@ class Scheduler:
         try:
             await asyncio.wait_for(fn(*task._args, **task._kwargs), timeout=task.timeout)  # type: ignore[attr-defined]
             task.status = "completed"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             task.status = "failed"
             task.timeout = task.timeout  # mark
         except Exception:
@@ -87,12 +88,11 @@ class Scheduler:
             task = await self.run_once()
             if task:
                 results.append(task)
+            # Workers saturated; yield to let running tasks finish
+            elif self._running:
+                await asyncio.sleep(0.05)
             else:
-                # Workers saturated; yield to let running tasks finish
-                if self._running:
-                    await asyncio.sleep(0.05)
-                else:
-                    break
+                break
         return results
 
     def pending_count(self) -> int:

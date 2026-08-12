@@ -10,10 +10,10 @@ import importlib.util
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from argus.extension.manifest import ExtensionManifest, ManifestValidationError
-from argus.extension.rpc import ExtensionRpc, RpcResponse, RpcError
+from argus.extension.rpc import ExtensionRpc, RpcResponse
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,8 @@ class ExtensionState(str, Enum):
 
 class ExtensionManager:
     """Manages extension lifecycle. Extensions are isolated; a crash in one
-    does not stop the core (each call is wrapped)."""
+    does not stop the core (each call is wrapped).
+    """
 
     def __init__(self) -> None:
         self._extensions: dict[str, ExtensionManifest] = {}
@@ -51,24 +52,26 @@ class ExtensionManager:
         manifest.validate()
         if manifest.extension_id in self._extensions:
             raise ManifestValidationError(
-                f"Extension {manifest.extension_id} already installed"
+                f"Extension {manifest.extension_id} already installed",
             )
         self._extensions[manifest.extension_id] = manifest
         self._states[manifest.extension_id] = ExtensionState.VALIDATED
         return True
 
-    def load(self, extension_id: str, module_path: Optional[Path] = None) -> bool:
+    def load(self, extension_id: str, module_path: Path | None = None) -> bool:
         """Load extension implementation (Load)."""
         manifest = self._get(extension_id)
         target = module_path or self._resolve_entry_point(manifest)
         if target is None or not Path(target).exists():
             self._states[extension_id] = ExtensionState.FAILED
             raise ManifestValidationError(
-                f"Entry point not found for {extension_id}: {manifest.entry_point}"
+                f"Entry point not found for {extension_id}: {manifest.entry_point}",
             )
         spec = importlib.util.spec_from_file_location(
-            f"argus_ext_{manifest.extension_id.replace('-', '_')}", target
+            f"argus_ext_{manifest.extension_id.replace('-', '_')}", target,
         )
+        if spec is None or spec.loader is None:
+            raise ManifestValidationError(f"Could not load module spec for {extension_id}")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         instance = self._build_instance(module, manifest)
@@ -76,7 +79,7 @@ class ExtensionManager:
         self._states[extension_id] = ExtensionState.LOADED
         return True
 
-    def initialize(self, extension_id: str, config: Optional[dict[str, Any]] = None) -> RpcResponse:
+    def initialize(self, extension_id: str, config: dict[str, Any] | None = None) -> RpcResponse:
         """Initialize (Initialize -> Ready)."""
         instance = self._get_instance(extension_id)
         try:
@@ -146,13 +149,13 @@ class ExtensionManager:
 
     # --- queries ---
 
-    def state(self, extension_id: str) -> Optional[ExtensionState]:
+    def state(self, extension_id: str) -> ExtensionState | None:
         return self._states.get(extension_id)
 
     def list_extensions(self) -> list[ExtensionManifest]:
         return list(self._extensions.values())
 
-    def get(self, extension_id: str) -> Optional[ExtensionManifest]:
+    def get(self, extension_id: str) -> ExtensionManifest | None:
         return self._extensions.get(extension_id)
 
     # --- internals ---
@@ -167,11 +170,11 @@ class ExtensionManager:
         instance = self._instances.get(extension_id)
         if instance is None:
             raise ManifestValidationError(
-                f"Extension not loaded: {extension_id} (call load() first)"
+                f"Extension not loaded: {extension_id} (call load() first)",
             )
         return instance
 
-    def _resolve_entry_point(self, manifest: ExtensionManifest) -> Optional[Path]:
+    def _resolve_entry_point(self, manifest: ExtensionManifest) -> Path | None:
         ep = Path(manifest.entry_point)
         if ep.is_absolute() and ep.exists():
             return ep
@@ -192,7 +195,7 @@ class ExtensionManager:
             ):
                 return obj()
         raise ManifestValidationError(
-            f"No ExtensionRpc subclass found in {manifest.entry_point}"
+            f"No ExtensionRpc subclass found in {manifest.entry_point}",
         )
 
 

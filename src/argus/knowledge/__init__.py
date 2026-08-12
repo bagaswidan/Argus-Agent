@@ -15,7 +15,7 @@ import re
 import threading
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -30,7 +30,7 @@ class KnowledgeEntry:
     source: str = ""
     confidence: float = 1.0  # 0..1
     verified: bool = True
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     tags: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,7 +71,7 @@ class KnowledgeFabric:
         topic: str = "general",
         confidence: float = 1.0,
         verified: bool = True,
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> KnowledgeEntry:
         entry = KnowledgeEntry(
             fact=fact,
@@ -86,7 +86,7 @@ class KnowledgeFabric:
             self._save()
         return entry
 
-    def get(self, fact_id: str) -> Optional[KnowledgeEntry]:
+    def get(self, fact_id: str) -> KnowledgeEntry | None:
         with self._lock:
             return self._entries.get(fact_id)
 

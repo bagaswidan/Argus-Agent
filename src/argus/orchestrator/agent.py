@@ -5,9 +5,9 @@ Defines agent roles, capabilities, and lifecycle states.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -43,7 +43,7 @@ class AgentSpec:
     description: str = ""
     capabilities: list[str] = field(default_factory=list)  # Capability names from registry
     system_prompt: str = ""
-    model_override: Optional[str] = None
+    model_override: str | None = None
     max_iterations: int = 10
     timeout_seconds: int = 300
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -69,11 +69,11 @@ class AgentInstance:
 
     spec: AgentSpec
     state: AgentState = AgentState.IDLE
-    assigned_task: Optional[str] = None
-    result: Optional[str] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    assigned_task: str | None = None
+    result: str | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     iteration: int = 0
     context: dict[str, Any] = field(default_factory=dict)
 

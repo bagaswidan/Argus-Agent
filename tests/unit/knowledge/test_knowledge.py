@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from argus.knowledge import KnowledgeFabric, create_knowledge_fabric
+from argus.knowledge import create_knowledge_fabric
 
 
 @pytest.fixture

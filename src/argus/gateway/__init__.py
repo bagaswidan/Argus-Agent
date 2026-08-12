@@ -4,15 +4,15 @@ HTTP/gRPC server, authentication, and platform adapter framework.
 """
 from __future__ import annotations
 
-from argus.gateway.server import GatewayServer, GatewayConfig
+from argus.gateway.adapters import AdapterRegistry, PlatformAdapter
 from argus.gateway.auth import AuthManager, TokenData
-from argus.gateway.adapters import PlatformAdapter, AdapterRegistry
+from argus.gateway.server import GatewayConfig, GatewayServer
 
 __all__ = [
-    "GatewayServer",
-    "GatewayConfig",
-    "AuthManager",
-    "TokenData",
-    "PlatformAdapter",
     "AdapterRegistry",
+    "AuthManager",
+    "GatewayConfig",
+    "GatewayServer",
+    "PlatformAdapter",
+    "TokenData",
 ]

@@ -5,12 +5,8 @@ for injection into system prompts.
 """
 from __future__ import annotations
 
-import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-
 
 # Known context file names in priority order (first found wins for each type)
 CONTEXT_FILES = [
@@ -92,7 +88,7 @@ def _discover_context_files(root: Path) -> list[Path]:
     return found
 
 
-def _parse_file(path: Path, priority: int) -> Optional[ContextFile]:
+def _parse_file(path: Path, priority: int) -> ContextFile | None:
     """Parse a single context file."""
     try:
         content = path.read_text(encoding="utf-8")

@@ -1,8 +1,9 @@
 """Test Gateway Auth — Argus."""
 from __future__ import annotations
 
-import pytest
 import time
+
+import pytest
 
 from argus.gateway.auth import AuthManager, TokenData, create_auth_manager
 

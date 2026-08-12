@@ -6,11 +6,11 @@ import pytest
 from argus.common.errors import (
     ArgusError,
     ConfigurationError,
-    ValidationError,
-    NotFoundError,
-    InternalError,
-    TimeoutError,
     ErrorCode,
+    InternalError,
+    NotFoundError,
+    TimeoutError,
+    ValidationError,
 )
 
 

@@ -1,10 +1,9 @@
 """Test Logging — Argus Core Foundation."""
 from __future__ import annotations
 
-import logging
 import pytest
 
-from argus.common.logging import configure_logging, get_logger, LogLevel, LogFormat
+from argus.common.logging import LogFormat, LogLevel, configure_logging, get_logger
 
 
 class TestLogging:

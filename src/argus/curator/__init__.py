@@ -15,7 +15,7 @@ import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -28,10 +28,10 @@ class UsageRecord:
     kind: str  # capability | skill
     use_count: int = 0
     success_count: int = 0
-    last_used_at: Optional[str] = None
-    last_status: Optional[str] = None
+    last_used_at: str | None = None
+    last_status: str | None = None
     archived: bool = False
-    archived_at: Optional[str] = None
+    archived_at: str | None = None
 
 
 @dataclass
@@ -42,7 +42,7 @@ class Lesson:
     source: str = ""
     failure_count: int = 0
     summary: str = ""
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class UsageTracker:
@@ -94,11 +94,11 @@ class UsageTracker:
             rec.use_count += 1
             if success:
                 rec.success_count += 1
-            rec.last_used_at = datetime.now(timezone.utc).isoformat()
+            rec.last_used_at = datetime.now(UTC).isoformat()
             rec.last_status = status
             self._save()
 
-    def get(self, name: str) -> Optional[UsageRecord]:
+    def get(self, name: str) -> UsageRecord | None:
         with self._lock:
             rec = self._records.get(name)
             return rec
@@ -113,7 +113,7 @@ class UsageTracker:
             if rec is None:
                 return False
             rec.archived = True
-            rec.archived_at = datetime.now(timezone.utc).isoformat()
+            rec.archived_at = datetime.now(UTC).isoformat()
             self._save()
             return True
 
@@ -155,7 +155,7 @@ class Curator:
         stale_after_days: float = 30.0,
         min_uses: int = 3,
         failure_rate_threshold: float = 0.5,
-        pinned: Optional[list[str]] = None,
+        pinned: list[str] | None = None,
     ):
         self.tracker = tracker
         self.stale_after_days = stale_after_days
@@ -163,16 +163,16 @@ class Curator:
         self.failure_rate_threshold = failure_rate_threshold
         self.pinned = set(pinned or [])
 
-    def _days_since(self, iso: Optional[str]) -> float:
+    def _days_since(self, iso: str | None) -> float:
         if not iso:
             return float("inf")
         try:
             ts = datetime.fromisoformat(iso)
-            return (datetime.now(timezone.utc) - ts).total_seconds() / 86400.0
+            return (datetime.now(UTC) - ts).total_seconds() / 86400.0
         except ValueError:
             return float("inf")
 
-    def review(self, now: Optional[float] = None) -> dict[str, Any]:
+    def review(self, now: float | None = None) -> dict[str, Any]:
         """Run one review pass. Returns a report dict."""
         archived: list[str] = []
         lessons: list[dict[str, Any]] = []
@@ -209,7 +209,7 @@ def create_curator(
     stale_after_days: float = 30.0,
     min_uses: int = 3,
     failure_rate_threshold: float = 0.5,
-    pinned: Optional[list[str]] = None,
+    pinned: list[str] | None = None,
 ) -> Curator:
     return Curator(
         tracker,

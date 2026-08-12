@@ -11,8 +11,8 @@ import os
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -30,7 +30,7 @@ class ChatResponse:
     completion_tokens: int = 0
     total_tokens: int = 0
     duration_ms: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
     def success(self) -> bool:
@@ -45,18 +45,19 @@ class OmniRouteProvider:
         api_key: optional bearer token (OmniRoute accepts any non-empty key)
         model: default model id (combo name or model id)
         timeout: request timeout in seconds
+
     """
 
     def __init__(
         self,
         base_url: str = "http://127.0.0.1:20128/v1",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = "Cadangan",
         timeout: float = 120.0,
     ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or os.environ.get(
-            "HERMES_CUSTOM_LOCALHOST_20128_API_KEY", ""
+            "HERMES_CUSTOM_LOCALHOST_20128_API_KEY", "",
         )
         self.model = model
         self.timeout = timeout
@@ -64,7 +65,7 @@ class OmniRouteProvider:
     def chat(
         self,
         messages: list[ChatMessage],
-        model: Optional[str] = None,
+        model: str | None = None,
         max_tokens: int = 1024,
         temperature: float = 0.7,
     ) -> ChatResponse:
@@ -132,16 +133,16 @@ class OmniRouteProvider:
             [
                 ChatMessage(role="system", content=system),
                 ChatMessage(role="user", content=prompt),
-            ]
+            ],
         )
 
 
 def create_provider(
     base_url: str = "http://127.0.0.1:20128/v1",
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     model: str = "Cadangan",
     timeout: float = 120.0,
 ) -> OmniRouteProvider:
     return OmniRouteProvider(
-        base_url=base_url, api_key=api_key, model=model, timeout=timeout
+        base_url=base_url, api_key=api_key, model=model, timeout=timeout,
     )

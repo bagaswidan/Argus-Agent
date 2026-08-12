@@ -7,9 +7,6 @@ Commands:
 """
 from __future__ import annotations
 
-import sys
-from typing import Optional
-
 import typer
 
 from argus import __version__
@@ -27,7 +24,7 @@ def version() -> None:
 
 
 @app.command()
-def logo(render: bool = typer.Option(False, help="Render logo ke JPEG (butuh Pillow)")):
+def logo(render: bool = typer.Option(False, help="Render logo ke JPEG (butuh Pillow)")) -> None:
     """Tampilkan logo Argus Panoptes."""
     from argus.branding import eye_only, render_logo_jpeg
 
@@ -45,7 +42,7 @@ def status() -> None:
     settings = get_settings()
     typer.echo(f"Argus v{__version__}")
     typer.echo(f"Data dir      : {settings.get_data_dir()}")
-    typer.echo(f"Config       : pydantic-settings (env prefixed ARGUS_)")
+    typer.echo("Config       : pydantic-settings (env prefixed ARGUS_)")
 
     try:
         from argus.gateway.auth import create_auth_manager
@@ -57,7 +54,6 @@ def status() -> None:
         typer.echo(f"Auth         : FAIL ({e})")
 
     try:
-        from argus.secretvault.vault import VaultConfig
 
         typer.echo("SecretVault  : OK (Fernet AES-128 tersedia)")
     except Exception as e:  # pragma: no cover
@@ -65,7 +61,7 @@ def status() -> None:
 
 
 @app.command()
-def ask(prompt: str, model: str = typer.Option("Cadangan", help="Model/combo OmniRoute")):
+def ask(prompt: str, model: str = typer.Option("Cadangan", help="Model/combo OmniRoute")) -> None:
     """Kirim satu prompt ke LLM via OmniRoute."""
     from argus.brain.provider import create_provider
 
@@ -84,7 +80,7 @@ def curator(
     action: str = typer.Argument("status", help="status | review"),
     db: str = typer.Option("", help="Path usage tracker (default: tempdir)"),
     stale_days: float = typer.Option(30.0, help="Idle threshold (hari)"),
-):
+) -> None:
     """Self-evolution: cek/scan penggunaan capability (Phase 11)."""
     from argus.curator import create_curator, create_usage_tracker
 
@@ -107,7 +103,7 @@ def curator(
             mark = " (archived)" if rec.archived else ""
             typer.echo(
                 f"  {rec.kind:<12} {rec.name:<30} uses={rec.use_count} "
-                f"success={rec.success_count}{mark}"
+                f"success={rec.success_count}{mark}",
             )
 
 
@@ -116,9 +112,9 @@ def dashboard(
     port: int = typer.Option(8787, help="Port untuk dashboard web"),
     host: str = typer.Option("127.0.0.1", help="Host bind"),
     db: str = typer.Option("", help="Path observability store (default: tempdir)"),
-):
+) -> None:
     """Jalankan web dashboard (Phase 6)."""
-    from argus.dashboard import serve_dashboard, create_dashboard_store
+    from argus.dashboard import create_dashboard_store, serve_dashboard
 
     if not db:
         import tempfile
@@ -136,13 +132,13 @@ def dashboard(
 
 
 @app.command()
-def chat(model: str = typer.Option("Cadangan", help="Model/combo OmniRoute")):
+def chat(model: str = typer.Option("Cadangan", help="Model/combo OmniRoute")) -> None:
     """REPL chat dengan Argus via OmniRoute. Ketik 'exit' untuk keluar."""
     from argus.brain.provider import ChatMessage, create_provider
 
     provider = create_provider(model=model)
     history: list[ChatMessage] = [
-        ChatMessage(role="system", content="Kamu adalah Argus, AI agent yang ringkas dan membantu. Jawab dalam bahasa yang sama dengan user.")
+        ChatMessage(role="system", content="Kamu adalah Argus, AI agent yang ringkas dan membantu. Jawab dalam bahasa yang sama dengan user."),
     ]
     typer.echo(f"Argus chat [{model}] — ketik 'exit' untuk keluar")
     while True:

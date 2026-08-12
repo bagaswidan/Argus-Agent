@@ -5,9 +5,10 @@ Agent revises → Repeat until passes or max iterations.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from argus.reflection.critic import Critic, CritiqueConfig, CritiqueResult, CritiqueSeverity
 
@@ -20,7 +21,7 @@ class ReflectionConfig:
     min_score_to_pass: float = 0.7
     stop_on_critical: bool = True
     stop_on_error: bool = True
-    critic_config: Optional[CritiqueConfig] = None
+    critic_config: CritiqueConfig | None = None
 
 
 @dataclass
@@ -31,7 +32,7 @@ class ReflectionStep:
     output: str
     critique: CritiqueResult
     revised: bool = False
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -70,8 +71,8 @@ class ReflectionLoop:
 
     def __init__(
         self,
-        config: Optional[ReflectionConfig] = None,
-        critic: Optional[Critic] = None,
+        config: ReflectionConfig | None = None,
+        critic: Critic | None = None,
     ):
         self.config = config or ReflectionConfig()
         self.critic = critic or Critic(self.config.critic_config)
@@ -80,8 +81,8 @@ class ReflectionLoop:
         self,
         initial_output: str,
         revision_fn: Callable[[str, CritiqueResult], Any],
-        context: Optional[dict[str, Any]] = None,
-        expected_output: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        expected_output: str | None = None,
     ) -> ReflectionResult:
         """Run the reflection loop.
 
@@ -93,6 +94,7 @@ class ReflectionLoop:
 
         Returns:
             ReflectionResult with final output and all steps
+
         """
         result = ReflectionResult(
             success=False,
@@ -175,13 +177,13 @@ class ReflectionLoop:
         self,
         initial_output: str,
         revision_fn: Callable[[str, CritiqueResult], str],
-        context: Optional[dict[str, Any]] = None,
-        expected_output: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        expected_output: str | None = None,
     ) -> ReflectionResult:
         """Synchronous version of run (wraps async)."""
         import asyncio
 
-        async def async_wrapper():
+        async def async_wrapper() -> ReflectionResult:
             return await self.run(
                 initial_output,
                 lambda o, c: asyncio.to_thread(revision_fn, o, c),

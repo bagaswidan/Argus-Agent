@@ -9,7 +9,7 @@ def test_weight_respect_and_record():
             "risk": 1.0,
             "reliability": 1.0,
             "latency": 1.0,
-        }
+        },
     )
     low_cost = engine.score_decision(
         goal_id="goal-1",

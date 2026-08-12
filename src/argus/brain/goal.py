@@ -9,7 +9,6 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List
 
 
 class GoalStatus(Enum):
@@ -25,7 +24,7 @@ class Goal:
     id: str
     description: str
     status: GoalStatus = GoalStatus.RECEIVED
-    subtasks: List[str] = field(default_factory=list)
+    subtasks: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -47,7 +46,7 @@ class GoalEngine:
     def analyze_goal(self, goal: Goal) -> Goal:
         if goal.status != GoalStatus.RECEIVED:
             raise RuntimeError(
-                f"Cannot analyze goal with status {goal.status.value}"
+                f"Cannot analyze goal with status {goal.status.value}",
             )
         goal.status = GoalStatus.ANALYZED
         return goal
@@ -55,7 +54,7 @@ class GoalEngine:
     def validate_goal(self, goal: Goal) -> Goal:
         if goal.status != GoalStatus.ANALYZED:
             raise RuntimeError(
-                f"Cannot validate goal with status {goal.status.value}"
+                f"Cannot validate goal with status {goal.status.value}",
             )
         goal.status = GoalStatus.VALIDATED
         return goal
@@ -63,7 +62,7 @@ class GoalEngine:
     def decompose_goal(self, goal: Goal) -> Goal:
         if goal.status != GoalStatus.VALIDATED:
             raise RuntimeError(
-                f"Cannot decompose goal with status {goal.status.value}"
+                f"Cannot decompose goal with status {goal.status.value}",
             )
         goal.subtasks = self._split_subtasks(goal.description)
         goal.status = GoalStatus.DECOMPOSED
@@ -72,7 +71,7 @@ class GoalEngine:
     def ready_goal(self, goal: Goal) -> Goal:
         if goal.status != GoalStatus.DECOMPOSED:
             raise RuntimeError(
-                f"Cannot ready goal with status {goal.status.value}"
+                f"Cannot ready goal with status {goal.status.value}",
             )
         goal.status = GoalStatus.READY
         return goal
@@ -86,11 +85,11 @@ class GoalEngine:
         self.ready_goal(goal)
         return goal
 
-    def _split_subtasks(self, description: str) -> List[str]:
+    def _split_subtasks(self, description: str) -> list[str]:
         if not description.strip():
             return []   # empty description yields no subtasks
         parts = self._split_re.split(description)
-        tasks: List[str] = []
+        tasks: list[str] = []
         # Odd indices are the captured keywords; the following entry is its content.
         for i in range(1, len(parts), 2):
             # Guard against a keyword being the very last token (no following content).

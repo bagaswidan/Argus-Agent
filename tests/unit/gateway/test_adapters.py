@@ -1,18 +1,19 @@
 """Test Gateway Adapters — Argus."""
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from argus.gateway.adapters import (
+    AdapterRegistry,
     PlatformAdapter,
     PlatformMessage,
     PlatformResponse,
     PlatformType,
-    AdapterRegistry,
     adapter_registry,
-    register_adapter,
     create_adapter,
+    register_adapter,
 )
 
 

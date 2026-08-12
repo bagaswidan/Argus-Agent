@@ -7,21 +7,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-import signal
-import subprocess
 import sys
-import tempfile
 import time
 import uuid
-import io
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
-from argus.common.errors import ArgusError, TimeoutError as ArgusTimeoutError
+from argus.common.errors import ArgusError
 from argus.common.events import Event, EventBus, EventPriority
 from argus.common.logging import get_logger
 
@@ -55,11 +51,11 @@ class ResourceLimit:
         self.allow_fs_write = allow_fs_write
 
     @classmethod
-    def default(cls) -> "ResourceLimit":
+    def default(cls) -> ResourceLimit:
         return cls()
 
     @classmethod
-    def strict(cls) -> "ResourceLimit":
+    def strict(cls) -> ResourceLimit:
         return cls(
             max_cpu_seconds=10,
             max_memory_mb=128,
@@ -70,7 +66,7 @@ class ResourceLimit:
         )
 
     @classmethod
-    def relaxed(cls) -> "ResourceLimit":
+    def relaxed(cls) -> ResourceLimit:
         return cls(
             max_cpu_seconds=120,
             max_memory_mb=2048,
@@ -146,10 +142,10 @@ class Sandbox:
 
     def __init__(
         self,
-        resource_limit: Optional[ResourceLimit] = None,
+        resource_limit: ResourceLimit | None = None,
         mode: SandboxMode = SandboxMode.THREAD,  # Default to thread mode for local functions
-        event_bus: Optional[EventBus] = None,
-        audit_log_path: Optional[Path] = None,
+        event_bus: EventBus | None = None,
+        audit_log_path: Path | None = None,
     ) -> None:
         self.resource_limit = resource_limit or ResourceLimit.default()
         self.mode = mode
@@ -161,14 +157,14 @@ class Sandbox:
         self,
         capability_name: str,
         func: Callable[..., Any],
-        *args,
+        *args: Any,
         input_summary: str = "",
-        correlation_id: Optional[str] = None,
-        **kwargs,
+        correlation_id: str | None = None,
+        **kwargs: Any,
     ) -> ExecutionResult:
         """Execute a capability function in sandbox."""
         cid = correlation_id or str(uuid.uuid4())
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
 
         # Emit start event
         if self.event_bus:
@@ -181,21 +177,21 @@ class Sandbox:
                         "input_summary": input_summary,
                     },
                     priority=EventPriority.NORMAL,
-                )
+                ),
             )
 
         try:
             if self.mode == SandboxMode.SUBPROCESS:
                 result = await self._execute_subprocess(
-                    capability_name, func, args, kwargs, cid
+                    capability_name, func, args, kwargs, cid,
                 )
             else:
                 result = await self._execute_thread(
-                    capability_name, func, args, kwargs, cid
+                    capability_name, func, args, kwargs, cid,
                 )
 
             result.correlation_id = cid
-            completed_at = datetime.now(timezone.utc)
+            completed_at = datetime.now(UTC)
 
             # Audit log
             audit = AuditEntry(
@@ -223,13 +219,13 @@ class Sandbox:
                             "duration_ms": result.duration_ms,
                         },
                         priority=EventPriority.NORMAL,
-                    )
+                    ),
                 )
 
             return result
 
         except Exception as e:
-            completed_at = datetime.now(timezone.utc)
+            completed_at = datetime.now(UTC)
             result = ExecutionResult(
                 success=False,
                 error=str(e),
@@ -261,7 +257,7 @@ class Sandbox:
                             "error": str(e),
                         },
                         priority=EventPriority.HIGH,
-                    )
+                    ),
                 )
 
             return result
@@ -276,8 +272,8 @@ class Sandbox:
     ) -> ExecutionResult:
         """Execute in isolated subprocess."""
         # Serialize function call to JSON for subprocess
-        import pickle
         import base64
+        import pickle
 
         serialized = base64.b64encode(pickle.dumps((func, args, kwargs))).decode()
 
@@ -354,7 +350,7 @@ print(json.dumps({{
                     proc.communicate(),
                     timeout=self.resource_limit.max_cpu_seconds + 5,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.wait()
                 return ExecutionResult(
@@ -370,7 +366,7 @@ print(json.dumps({{
                 return ExecutionResult(
                     success=False,
                     error=stderr.decode()[: self.resource_limit.max_output_bytes],
-                    exit_code=proc.returncode,
+                    exit_code=proc.returncode if proc.returncode is not None else 1,
                     duration_ms=duration_ms,
                 )
 
@@ -437,7 +433,7 @@ print(json.dumps({{
                 duration_ms=duration_ms,
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ExecutionResult(
                 success=False,
                 error=f"Execution timeout ({self.resource_limit.max_cpu_seconds}s)",
@@ -479,10 +475,10 @@ class CapabilitySandboxError(ArgusError):
 
 
 __all__ = [
-    "Sandbox",
-    "SandboxMode",
-    "ResourceLimit",
-    "ExecutionResult",
     "AuditEntry",
     "CapabilitySandboxError",
+    "ExecutionResult",
+    "ResourceLimit",
+    "Sandbox",
+    "SandboxMode",
 ]

@@ -14,10 +14,12 @@ import fnmatch
 import logging
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, Callable, Awaitable
+from types import TracebackType
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -37,6 +39,7 @@ class Event(BaseModel):
     """Immutable event."""
 
     type: str
+    priority: EventPriority | str = EventPriority.NORMAL
     payload: dict[str, Any] = Field(default_factory=dict)
     source: str = "unknown"
     correlation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -77,10 +80,15 @@ class Subscription:
         """Check if event type matches pattern (supports wildcards)."""
         return fnmatch.fnmatch(event_type, self.event_pattern)
 
-    def __enter__(self):
+    def __enter__(self) -> Subscription:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         self.unsubscribe()
         return False
 
@@ -105,7 +113,7 @@ class EventBus:
         self._subscriptions: dict[str, list[Subscription]] = defaultdict(list)
         self._wildcard_subscriptions: list[Subscription] = []
         self._queue: asyncio.PriorityQueue[tuple[int, int, Event]] = asyncio.PriorityQueue(
-            maxsize=max_queue_size
+            maxsize=max_queue_size,
         )
         self._dead_letters: list[Event] = []
         self._workers: list[asyncio.Task] = []
@@ -197,7 +205,7 @@ class EventBus:
                 _, _, event = await asyncio.wait_for(self._queue.get(), timeout=0.1)
                 await self._deliver(event)
                 self._queue.task_done()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

@@ -4,9 +4,8 @@ from __future__ import annotations
 import pytest
 
 from argus.security.engine import (
-    SecurityEngine,
-    SecurityError,
     AccessRequest,
+    SecurityError,
     create_security_engine,
 )
 

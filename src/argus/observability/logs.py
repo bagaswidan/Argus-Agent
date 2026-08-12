@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class LogLevel(str, Enum):
@@ -30,10 +30,10 @@ class LogEntry:
     message: str
     level: LogLevel = LogLevel.INFO
     logger: str = "argus"
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     attributes: dict[str, Any] = field(default_factory=dict)
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -60,9 +60,9 @@ class LogCollector:
         message: str,
         level: LogLevel = LogLevel.INFO,
         logger: str = "argus",
-        attributes: Optional[dict[str, Any]] = None,
-        trace_id: Optional[str] = None,
-        span_id: Optional[str] = None,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
     ) -> LogEntry:
         entry = LogEntry(
             message=message,
@@ -78,28 +78,28 @@ class LogCollector:
                 self._entries = self._entries[-self._max_entries:]
         return entry
 
-    def debug(self, message: str, **kwargs) -> LogEntry:
+    def debug(self, message: str, **kwargs: Any) -> LogEntry:
         return self.log(message, LogLevel.DEBUG, **kwargs)
 
-    def info(self, message: str, **kwargs) -> LogEntry:
+    def info(self, message: str, **kwargs: Any) -> LogEntry:
         return self.log(message, LogLevel.INFO, **kwargs)
 
-    def warning(self, message: str, **kwargs) -> LogEntry:
+    def warning(self, message: str, **kwargs: Any) -> LogEntry:
         return self.log(message, LogLevel.WARNING, **kwargs)
 
-    def error(self, message: str, **kwargs) -> LogEntry:
+    def error(self, message: str, **kwargs: Any) -> LogEntry:
         return self.log(message, LogLevel.ERROR, **kwargs)
 
-    def critical(self, message: str, **kwargs) -> LogEntry:
+    def critical(self, message: str, **kwargs: Any) -> LogEntry:
         return self.log(message, LogLevel.CRITICAL, **kwargs)
 
     def query(
         self,
-        level: Optional[LogLevel] = None,
-        min_level: Optional[LogLevel] = None,
-        logger: Optional[str] = None,
-        message_contains: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        level: LogLevel | None = None,
+        min_level: LogLevel | None = None,
+        logger: str | None = None,
+        message_contains: str | None = None,
+        trace_id: str | None = None,
         limit: int = 100,
     ) -> list[LogEntry]:
         """Query logs with filters."""
@@ -123,7 +123,7 @@ class LogCollector:
 
     def count_by_level(self) -> dict[str, int]:
         with self._lock:
-            counts = {}
+            counts: dict[str, int] = {}
             for e in self._entries:
                 counts[e.level.value] = counts.get(e.level.value, 0) + 1
             return counts

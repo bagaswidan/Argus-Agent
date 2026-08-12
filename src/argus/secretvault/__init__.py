@@ -4,6 +4,6 @@ Secure secret storage with encryption for API keys, tokens, credentials.
 """
 from __future__ import annotations
 
-from argus.secretvault.vault import SecretVault, VaultConfig, SecretEntry
+from argus.secretvault.vault import SecretEntry, SecretVault, VaultConfig
 
-__all__ = ["SecretVault", "VaultConfig", "SecretEntry"]
+__all__ = ["SecretEntry", "SecretVault", "VaultConfig"]

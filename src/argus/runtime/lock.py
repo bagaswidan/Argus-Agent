@@ -8,7 +8,6 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 class LockError(Exception):
@@ -38,7 +37,7 @@ class LockManager:
         self._locks: dict[str, LockHandle] = {}
         self._default_ttl = 300.0
 
-    def acquire(self, key: str, owner: str = "", ttl: Optional[float] = None, wait: float = 0.0) -> LockHandle:
+    def acquire(self, key: str, owner: str = "", ttl: float | None = None, wait: float = 0.0) -> LockHandle:
         """Acquire lock on key. If wait>0, retry until available or timeout."""
         ttl = ttl or self._default_ttl
         deadline = time.monotonic() + wait
@@ -58,7 +57,7 @@ class LockManager:
                 raise LockError(f"Lock already held on '{key}' by {existing.owner}")
             time.sleep(0.05)
 
-    def try_acquire(self, key: str, owner: str = "", ttl: Optional[float] = None) -> Optional[LockHandle]:
+    def try_acquire(self, key: str, owner: str = "", ttl: float | None = None) -> LockHandle | None:
         """Non-blocking acquire; returns None if held."""
         try:
             return self.acquire(key, owner, ttl, wait=0.0)
@@ -83,7 +82,7 @@ class LockManager:
                 return False
             return True
 
-    def owner_of(self, key: str) -> Optional[str]:
+    def owner_of(self, key: str) -> str | None:
         with self._lock:
             existing = self._locks.get(key)
             return existing.owner if existing and not existing.expired else None

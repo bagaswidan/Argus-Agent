@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from argus.brain.intent import IntentParser, create_intent_parser
-from argus.brain.solver import ProblemSolver, create_problem_solver
+from argus.brain.intent import create_intent_parser
+from argus.brain.solver import create_problem_solver
 
 
 class TestIntentParser:
@@ -80,7 +80,7 @@ class TestProblemSolver:
 
     def test_custom_actions_used(self):
         analysis = create_problem_solver().analyze(
-            "timed out", available_actions=["custom-retry", "abort"]
+            "timed out", available_actions=["custom-retry", "abort"],
         )
         assert analysis.alternative_actions == ["custom-retry", "abort"]
 

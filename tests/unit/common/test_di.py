@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from argus.common.di import Container, ServiceDescriptor, ServiceLifetime, resolve
+from argus.common.di import Container, resolve
 
 
 class DummyService:

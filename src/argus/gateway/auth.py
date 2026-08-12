@@ -6,18 +6,23 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import secrets
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, cast
 
-try:
-    import jwt
+if TYPE_CHECKING:
+    # PyJWT is an optional dependency; when it is not installed we fall back
+    # to the built-in HMAC token scheme. Stub the module as Any for mypy.
+    jwt: Any
     JWT_AVAILABLE = True
-except ImportError:
-    JWT_AVAILABLE = False
+else:
+    try:
+        import jwt
+
+        JWT_AVAILABLE = True
+    except ImportError:
+        JWT_AVAILABLE = False
 
 
 @dataclass
@@ -26,8 +31,8 @@ class TokenData:
 
     sub: str  # subject (user/agent id)
     scopes: list[str] = field(default_factory=list)
-    exp: Optional[int] = None  # expiration timestamp
-    iat: Optional[int] = None  # issued at
+    exp: int | None = None  # expiration timestamp
+    iat: int | None = None  # issued at
     extra: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -51,10 +56,10 @@ class AuthManager:
 
     def __init__(
         self,
-        secret_key: Optional[str] = None,
+        secret_key: str | None = None,
         algorithm: str = "HS256",
         default_ttl_seconds: int = 3600,
-        api_keys: Optional[dict[str, TokenData]] = None,
+        api_keys: dict[str, TokenData] | None = None,
     ):
         self.secret_key = secret_key or secrets.token_urlsafe(32)
         self.algorithm = algorithm
@@ -64,9 +69,9 @@ class AuthManager:
     def create_token(
         self,
         sub: str,
-        scopes: Optional[list[str]] = None,
-        ttl_seconds: Optional[int] = None,
-        extra: Optional[dict[str, Any]] = None,
+        scopes: list[str] | None = None,
+        ttl_seconds: int | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> str:
         """Create a new JWT token."""
         if not JWT_AVAILABLE:
@@ -76,7 +81,7 @@ class AuthManager:
             scopes_str = ",".join(scopes) if scopes else ""
             payload = f"{sub}:{scopes_str}:{iat}:{exp}"
             sig = hmac.new(
-                self.secret_key.encode(), payload.encode(), hashlib.sha256
+                self.secret_key.encode(), payload.encode(), hashlib.sha256,
             ).hexdigest()[:16]
             return f"{payload}:{sig}"
 
@@ -85,23 +90,23 @@ class AuthManager:
 
         # Place standard claims *after* `extra` so they cannot be overridden
         # by unexpected keys supplied by the caller.
-        payload = {
+        claims: dict[str, Any] = {
             **(extra or {}),
             "sub": sub,
             "scopes": scopes if scopes is not None else [],
             "iat": now,
             "exp": exp,
         }
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+        return cast(str, jwt.encode(claims, self.secret_key, algorithm=self.algorithm))
 
-    def verify_token(self, token: str) -> Optional[TokenData]:
+    def verify_token(self, token: str) -> TokenData | None:
         """Verify and decode a token."""
         if not JWT_AVAILABLE:
             return self._verify_simple_token(token)
 
         try:
             payload = jwt.decode(
-                token, self.secret_key, algorithms=[self.algorithm]
+                token, self.secret_key, algorithms=[self.algorithm],
             )
             return TokenData(
                 sub=payload["sub"],
@@ -113,7 +118,7 @@ class AuthManager:
         except jwt.InvalidTokenError:
             return None
 
-    def _verify_simple_token(self, token: str) -> Optional[TokenData]:
+    def _verify_simple_token(self, token: str) -> TokenData | None:
         """Verify simple token format (fallback when jwt not available)."""
         parts = token.split(":")
         if len(parts) != 5:
@@ -129,7 +134,7 @@ class AuthManager:
 
         payload = f"{sub}:{scopes_str}:{iat}:{exp}"
         expected_sig = hmac.new(
-            self.secret_key.encode(), payload.encode(), hashlib.sha256
+            self.secret_key.encode(), payload.encode(), hashlib.sha256,
         ).hexdigest()[:16]
 
         if not hmac.compare_digest(sig, expected_sig):
@@ -140,7 +145,7 @@ class AuthManager:
 
         return TokenData(sub=sub, scopes=scopes, iat=iat, exp=exp)
 
-    def validate_api_key(self, api_key: str) -> Optional[TokenData]:
+    def validate_api_key(self, api_key: str) -> TokenData | None:
         """Validate an API key."""
         return self.api_keys.get(api_key)
 
@@ -161,8 +166,8 @@ class AuthManager:
 
 
 def create_auth_manager(
-    secret_key: Optional[str] = None,
-    api_keys: Optional[dict[str, TokenData]] = None,
+    secret_key: str | None = None,
+    api_keys: dict[str, TokenData] | None = None,
 ) -> AuthManager:
     """Factory function to create an auth manager."""
     return AuthManager(secret_key=secret_key, api_keys=api_keys)

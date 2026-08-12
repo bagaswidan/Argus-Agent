@@ -10,7 +10,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class TransactionStatus(str, Enum):
@@ -38,13 +38,13 @@ class Transaction:
     status: TransactionStatus = TransactionStatus.ACTIVE
     checkpoints: list[dict[str, Any]] = field(default_factory=list)
     created_at: float = field(default_factory=time.monotonic)
-    committed_at: Optional[float] = None
+    committed_at: float | None = None
     payload: dict[str, Any] = field(default_factory=dict)
 
-    def checkpoint(self, label: str, data: Optional[dict[str, Any]] = None) -> int:
+    def checkpoint(self, label: str, data: dict[str, Any] | None = None) -> int:
         """Record a checkpoint. Returns checkpoint index."""
         self.checkpoints.append(
-            {"label": label, "data": data or {}, "time": time.monotonic()}
+            {"label": label, "data": data or {}, "time": time.monotonic()},
         )
         self.status = TransactionStatus.CHECKPOINTED
         return len(self.checkpoints) - 1
@@ -64,13 +64,13 @@ class TransactionManager:
         self._recovery: list[dict[str, Any]] = []
         self._max_recovery = 500
 
-    def begin(self, name: str = "", payload: Optional[dict[str, Any]] = None) -> Transaction:
+    def begin(self, name: str = "", payload: dict[str, Any] | None = None) -> Transaction:
         tx = Transaction(name=name, payload=payload or {})
         with self._lock:
             self._transactions[tx.id] = tx
         return tx
 
-    def get(self, tx_id: str) -> Optional[Transaction]:
+    def get(self, tx_id: str) -> Transaction | None:
         with self._lock:
             return self._transactions.get(tx_id)
 
@@ -96,7 +96,7 @@ class TransactionManager:
         tx_id: str,
         strategy: RecoveryStrategy,
         reason: str,
-        detail: Optional[dict[str, Any]] = None,
+        detail: dict[str, Any] | None = None,
     ) -> None:
         with self._lock:
             self._recovery.append(
@@ -106,7 +106,7 @@ class TransactionManager:
                     "reason": reason,
                     "detail": detail or {},
                     "time": time.monotonic(),
-                }
+                },
             )
             if len(self._recovery) > self._max_recovery:
                 self._recovery = self._recovery[-self._max_recovery:]

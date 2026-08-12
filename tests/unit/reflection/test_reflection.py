@@ -5,15 +5,15 @@ import pytest
 
 from argus.reflection.critic import (
     Critic,
-    CritiqueConfig,
-    CritiqueResult,
-    CritiqueFinding,
     CritiqueCategory,
+    CritiqueConfig,
+    CritiqueFinding,
+    CritiqueResult,
     CritiqueSeverity,
 )
 from argus.reflection.loop import (
-    ReflectionLoop,
     ReflectionConfig,
+    ReflectionLoop,
     ReflectionResult,
     ReflectionStep,
 )
@@ -85,14 +85,14 @@ class TestCritiqueResult:
                 category=CritiqueCategory.CORRECTNESS,
                 severity=CritiqueSeverity.INFO,
                 message="Info",
-            )
+            ),
         )
         result.add_finding(
             CritiqueFinding(
                 category=CritiqueCategory.CORRECTNESS,
                 severity=CritiqueSeverity.ERROR,
                 message="Error",
-            )
+            ),
         )
         errors = result.get_findings_by_severity(CritiqueSeverity.ERROR)
         assert len(errors) == 1
@@ -104,14 +104,14 @@ class TestCritiqueResult:
                 category=CritiqueCategory.SECURITY,
                 severity=CritiqueSeverity.WARNING,
                 message="Security",
-            )
+            ),
         )
         result.add_finding(
             CritiqueFinding(
                 category=CritiqueCategory.CLARITY,
                 severity=CritiqueSeverity.WARNING,
                 message="Clarity",
-            )
+            ),
         )
         security = result.get_findings_by_category(CritiqueCategory.SECURITY)
         assert len(security) == 1

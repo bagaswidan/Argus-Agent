@@ -10,7 +10,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 T = TypeVar("T")
 
@@ -29,7 +29,7 @@ class ServiceDescriptor:
     def __init__(
         self,
         service_type: type,
-        factory: Callable[["Container"], Any],
+        factory: Callable[[Container], Any],
         lifetime: ServiceLifetime,
         instance: Any = None,
     ):
@@ -42,7 +42,7 @@ class ServiceDescriptor:
 class Container:
     """Dependency injection container."""
 
-    def __init__(self, parent: "Container | None" = None):
+    def __init__(self, parent: Container | None = None):
         self._services: dict[type, ServiceDescriptor] = {}
         self._parent = parent
         self._lock = threading.RLock()
@@ -56,21 +56,21 @@ class Container:
         """Register a singleton service."""
         with self._lock:
             self._services[service_type] = ServiceDescriptor(
-                service_type, factory, ServiceLifetime.SINGLETON
+                service_type, factory, ServiceLifetime.SINGLETON,
             )
 
     def register_transient(self, service_type: type[T], factory: Callable[..., T]) -> None:
         """Register a transient service (new instance each resolve)."""
         with self._lock:
             self._services[service_type] = ServiceDescriptor(
-                service_type, factory, ServiceLifetime.TRANSIENT
+                service_type, factory, ServiceLifetime.TRANSIENT,
             )
 
     def register_scoped(self, service_type: type[T], factory: Callable[..., T]) -> None:
         """Register a scoped service (one per scope)."""
         with self._lock:
             self._services[service_type] = ServiceDescriptor(
-                service_type, factory, ServiceLifetime.SCOPED
+                service_type, factory, ServiceLifetime.SCOPED,
             )
 
     def register_instance(self, service_type: type[T], instance: T) -> None:
@@ -99,14 +99,14 @@ class Container:
         if self._parent:
             # For scoped services, we need to create instance in THIS container (the child scope)
             # so that each scope gets its own instance
-            desc = self._parent._services.get(service_type)
-            if desc and desc.lifetime == ServiceLifetime.SCOPED:
-                return self._create_instance(desc, service_type)
+            parent_desc = self._parent._services.get(service_type)
+            if parent_desc and parent_desc.lifetime == ServiceLifetime.SCOPED:
+                return self._create_instance(parent_desc, service_type)
             return self._parent._resolve_internal(service_type)
 
         raise KeyError(f"Service {service_type.__name__} not registered")
 
-    def _create_instance(self, desc: ServiceDescriptor, service_type: type) -> Any:
+    def _create_instance(self, desc: ServiceDescriptor, service_type: type[T]) -> T:
         # Circular dependency detection
         if service_type in self._resolving:
             raise RuntimeError(f"Circular dependency detected for {service_type.__name__}")
@@ -116,21 +116,21 @@ class Container:
             if desc.lifetime == ServiceLifetime.SINGLETON:
                 if desc.instance is None:
                     desc.instance = desc.factory(self)
-                return desc.instance
+                return cast(T, desc.instance)
 
             if desc.lifetime == ServiceLifetime.SCOPED:
                 if desc.service_type not in self._scoped_instances:
                     self._scoped_instances[desc.service_type] = desc.factory(self)
-                return self._scoped_instances[desc.service_type]
+                return cast(T, self._scoped_instances[desc.service_type])
 
             # TRANSIENT
-            return desc.factory(self)
+            return cast(T, desc.factory(self))
         finally:
             self._resolving.discard(service_type)
 
     # ----- scope -----
 
-    def create_scope(self) -> "Container":
+    def create_scope(self) -> Container:
         """Create a child scope for scoped services."""
         return Container(parent=self)
 

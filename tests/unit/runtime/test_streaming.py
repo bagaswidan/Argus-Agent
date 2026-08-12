@@ -6,8 +6,6 @@ import asyncio
 import pytest
 
 from argus.runtime.streaming import (
-    StreamCancelled,
-    StreamingManager,
     collect_stream,
     create_streaming_manager,
 )

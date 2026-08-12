@@ -7,7 +7,7 @@ alternatives, and can build a replan request for the Planning Engine.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -45,7 +45,7 @@ _RETRYABLE = {"timeout", "connection"}
 class ProblemSolver:
     """Classifies failures and proposes recovery actions."""
 
-    def analyze(self, error: str, available_actions: Optional[list[str]] = None) -> FailureAnalysis:
+    def analyze(self, error: str, available_actions: list[str] | None = None) -> FailureAnalysis:
         lower = error.lower()
         category = "unknown"
         for cat, keywords in _CATEGORY_RULES:

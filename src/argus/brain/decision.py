@@ -5,11 +5,11 @@ Every recorded decision is stored in an in-memory DecisionMemory.
 """
 from __future__ import annotations
 
-import copy
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Mapping, Optional
+from typing import Any
 
 
 @dataclass
@@ -27,7 +27,7 @@ class Decision:
 class DecisionMemory:
     """Append-only in-memory store of decisions."""
 
-    def __init__(self, max_size: Optional[int] = None) -> None:
+    def __init__(self, max_size: int | None = None) -> None:
         self._decisions: list[Decision] = []
         self.max_size = max_size
 
@@ -48,7 +48,7 @@ class DecisionEngine:
 
     def __init__(
         self,
-        weights: Optional[Mapping[str, float]] = None,
+        weights: Mapping[str, float] | None = None,
     ) -> None:
         default_weights = {
             "confidence": 1.0,
@@ -69,7 +69,7 @@ class DecisionEngine:
         candidate_id: str,
         scores: Mapping[str, float],
         reasoning: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Decision:
         """Evaluate one candidate and record the resulting Decision.
 
@@ -83,7 +83,7 @@ class DecisionEngine:
             if not isinstance(raw, (int, float)):
                 raise TypeError(
                     f"Score for factor '{factor}' must be a number, "
-                    f"got {type(raw).__name__}: {raw!r}"
+                    f"got {type(raw).__name__}: {raw!r}",
                 )
             # Detect NaN (the only value where value != value).
             if raw != raw:
@@ -91,7 +91,7 @@ class DecisionEngine:
             if not (0.0 <= raw <= 1.0):
                 raise ValueError(
                     f"Score for factor '{factor}' must be between 0.0 and 1.0, "
-                    f"got {raw}"
+                    f"got {raw}",
                 )
             normalized[factor] = max(0.0, min(1.0, raw))
 

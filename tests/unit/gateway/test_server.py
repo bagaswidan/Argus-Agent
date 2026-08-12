@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from argus.gateway.server import GatewayServer, GatewayConfig, AIOHTTP_AVAILABLE
+from argus.gateway.server import GatewayConfig, GatewayServer
 
 
 class TestGatewayConfig:

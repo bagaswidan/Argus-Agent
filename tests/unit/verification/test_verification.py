@@ -4,10 +4,9 @@ from __future__ import annotations
 import pytest
 
 from argus.verification import (
-    VerificationStage,
-    check_not_empty,
     check_no_error_flag,
     check_no_secret_leak,
+    check_not_empty,
     check_success_flag,
     create_verification_stage,
 )

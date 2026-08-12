@@ -7,21 +7,21 @@ never raw dicts.
 from __future__ import annotations
 
 from argus.contracts.types import (
-    Request,
-    Decision,
     CapabilityRequest,
+    ContractValidationError,
+    Decision,
     ExecutionResultContract,
     FailureObject,
-    ContractValidationError,
+    Request,
     validate_contract,
 )
 
 __all__ = [
-    "Request",
-    "Decision",
     "CapabilityRequest",
+    "ContractValidationError",
+    "Decision",
     "ExecutionResultContract",
     "FailureObject",
-    "ContractValidationError",
+    "Request",
     "validate_contract",
 ]

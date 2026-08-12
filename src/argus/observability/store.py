@@ -7,13 +7,13 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from argus.observability.metrics import Metric, MetricsCollector, MetricType
-from argus.observability.traces import Span, Trace, TraceStatus, Tracer
-from argus.observability.logs import LogEntry, LogCollector, LogLevel
+from argus.observability.logs import LogEntry, LogLevel
+from argus.observability.metrics import Metric, MetricType
+from argus.observability.traces import Trace
 
 
 class ObservabilityStore:
@@ -23,9 +23,18 @@ class ObservabilityStore:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        self.__conn: sqlite3.Connection | None = sqlite3.connect(
+            str(self.db_path), check_same_thread=False,
+        )
         self._conn.row_factory = sqlite3.Row
         self._init_schema()
+
+    @property
+    def _conn(self) -> sqlite3.Connection:
+        conn = self.__conn
+        if conn is None:
+            raise RuntimeError("Observability store is closed")
+        return conn
 
     def _init_schema(self) -> None:
         with self._lock:
@@ -40,7 +49,7 @@ class ObservabilityStore:
                     labels TEXT NOT NULL DEFAULT '{}',
                     timestamp TEXT NOT NULL
                 )
-                """
+                """,
             )
             cur.execute(
                 """
@@ -54,7 +63,7 @@ class ObservabilityStore:
                     end_time TEXT,
                     spans TEXT NOT NULL DEFAULT '[]'
                 )
-                """
+                """,
             )
             cur.execute(
                 """
@@ -68,7 +77,7 @@ class ObservabilityStore:
                     trace_id TEXT,
                     span_id TEXT
                 )
-                """
+                """,
             )
             cur.execute("CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(name)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)")
@@ -77,7 +86,7 @@ class ObservabilityStore:
             self._conn.commit()
 
     @staticmethod
-    def _sanitize_limit(limit: Optional[int], default: int = 100) -> int:
+    def _sanitize_limit(limit: int | None, default: int = 100) -> int:
         if limit is None or limit <= 0:
             return default
         return limit
@@ -100,8 +109,8 @@ class ObservabilityStore:
 
     def query_metrics(
         self,
-        name: Optional[str] = None,
-        metric_type: Optional[MetricType] = None,
+        name: str | None = None,
+        metric_type: MetricType | None = None,
         limit: int = 100,
     ) -> list[Metric]:
         limit = self._sanitize_limit(limit)
@@ -151,7 +160,7 @@ class ObservabilityStore:
             )
             self._conn.commit()
 
-    def get_trace(self, trace_id: str) -> Optional[dict[str, Any]]:
+    def get_trace(self, trace_id: str) -> dict[str, Any] | None:
         with self._lock:
             row = self._conn.execute("SELECT * FROM traces WHERE trace_id = ?", (trace_id,)).fetchone()
         if not row:
@@ -171,7 +180,7 @@ class ObservabilityStore:
         limit = self._sanitize_limit(limit, default=50)
         with self._lock:
             rows = self._conn.execute(
-                "SELECT * FROM traces ORDER BY start_time DESC LIMIT ?", (limit,)
+                "SELECT * FROM traces ORDER BY start_time DESC LIMIT ?", (limit,),
             ).fetchall()
         return [
             {
@@ -210,9 +219,9 @@ class ObservabilityStore:
 
     def query_logs(
         self,
-        level: Optional[LogLevel] = None,
-        logger: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        level: LogLevel | None = None,
+        logger: str | None = None,
+        trace_id: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         limit = self._sanitize_limit(limit)
@@ -252,10 +261,10 @@ class ObservabilityStore:
             trace_count = self._conn.execute("SELECT COUNT(*) FROM traces").fetchone()[0]
             log_count = self._conn.execute("SELECT COUNT(*) FROM logs").fetchone()[0]
             error_count = self._conn.execute(
-                "SELECT COUNT(*) FROM logs WHERE level IN ('error', 'critical')"
+                "SELECT COUNT(*) FROM logs WHERE level IN ('error', 'critical')",
             ).fetchone()[0]
             slow_traces = self._conn.execute(
-                "SELECT COUNT(*) FROM traces WHERE duration_ms > 1000"
+                "SELECT COUNT(*) FROM traces WHERE duration_ms > 1000",
             ).fetchone()[0]
         return {
             "metric_count": metric_count,
@@ -267,9 +276,9 @@ class ObservabilityStore:
 
     def close(self) -> None:
         with self._lock:
-            if self._conn is not None:
-                self._conn.close()
-                self._conn = None
+            if self.__conn is not None:
+                self.__conn.close()
+                self.__conn = None
 
 
 def create_obs_store(db_path: Path | str) -> ObservabilityStore:

@@ -7,18 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from argus.extension.manifest import (
-    ExtensionManifest,
-    ExtensionType,
-    load_manifest,
-    ManifestValidationError,
-)
-from argus.extension.rpc import ExtensionRpc, RpcResponse, create_rpc_response
 from argus.extension.manager import (
-    ExtensionManager,
     ExtensionState,
     create_extension_manager,
 )
+from argus.extension.manifest import (
+    ExtensionManifest,
+    ExtensionType,
+    ManifestValidationError,
+    load_manifest,
+)
+from argus.extension.rpc import ExtensionRpc, create_rpc_response
 
 
 def make_manifest(**overrides) -> ExtensionManifest:

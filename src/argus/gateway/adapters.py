@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 
 class PlatformType(str, Enum):
@@ -35,9 +36,9 @@ class PlatformMessage:
     sender_id: str
     chat_id: str
     text: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
-    raw: Optional[dict[str, Any]] = None
+    raw: dict[str, Any] | None = None
 
 
 @dataclass
@@ -46,8 +47,8 @@ class PlatformResponse:
 
     chat_id: str
     text: str
-    reply_to_message_id: Optional[str] = None
-    parse_mode: Optional[str] = None
+    reply_to_message_id: str | None = None
+    parse_mode: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -62,7 +63,7 @@ class PlatformAdapter(ABC):
         self.platform_type = platform_type
         self.config = config
         self._running = False
-        self._message_handler: Optional[Callable[[PlatformMessage], Any]] = None
+        self._message_handler: Callable[[PlatformMessage], Any] | None = None
 
     @property
     @abstractmethod
@@ -87,7 +88,7 @@ class PlatformAdapter(ABC):
         """Poll for new messages (for polling-based platforms)."""
 
     def set_message_handler(
-        self, handler: Callable[[PlatformMessage], Any]
+        self, handler: Callable[[PlatformMessage], Any],
     ) -> None:
         """Set the async handler for incoming messages."""
         self._message_handler = handler
@@ -99,7 +100,7 @@ class PlatformAdapter(ABC):
                 await self._message_handler(message)
             else:
                 await asyncio.get_event_loop().run_in_executor(
-                    None, self._message_handler, message
+                    None, self._message_handler, message,
                 )
 
     @property
@@ -114,14 +115,14 @@ class PlatformAdapter(ABC):
 class AdapterRegistry:
     """Registry for platform adapters."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._adapters: dict[PlatformType, type[PlatformAdapter]] = {}
 
     def register(self, platform_type: PlatformType, adapter_class: type[PlatformAdapter]) -> None:
         """Register an adapter class for a platform type."""
         self._adapters[platform_type] = adapter_class
 
-    def get(self, platform_type: PlatformType) -> Optional[type[PlatformAdapter]]:
+    def get(self, platform_type: PlatformType) -> type[PlatformAdapter] | None:
         """Get adapter class for platform type."""
         return self._adapters.get(platform_type)
 
@@ -129,7 +130,7 @@ class AdapterRegistry:
         self,
         platform_type: PlatformType,
         config: dict[str, Any],
-    ) -> Optional[PlatformAdapter]:
+    ) -> PlatformAdapter | None:
         """Create an adapter instance."""
         adapter_class = self.get(platform_type)
         if adapter_class:
@@ -145,14 +146,14 @@ adapter_registry = AdapterRegistry()
 
 
 def register_adapter(
-    platform_type: PlatformType, adapter_class: type[PlatformAdapter]
+    platform_type: PlatformType, adapter_class: type[PlatformAdapter],
 ) -> None:
     """Register an adapter in the global registry."""
     adapter_registry.register(platform_type, adapter_class)
 
 
 def create_adapter(
-    platform_type: PlatformType, config: dict[str, Any]
-) -> Optional[PlatformAdapter]:
+    platform_type: PlatformType, config: dict[str, Any],
+) -> PlatformAdapter | None:
     """Create an adapter from the global registry."""
     return adapter_registry.create(platform_type, config)

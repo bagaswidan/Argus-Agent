@@ -1,13 +1,6 @@
 """Resource limit test — Argus sandbox resource caps."""
 from __future__ import annotations
 
-import asyncio
-import os
-import tempfile
-from pathlib import Path
-
-import pytest
-
 from argus.runtime.sandbox import ResourceLimit
 
 

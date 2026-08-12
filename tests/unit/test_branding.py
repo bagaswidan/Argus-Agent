@@ -4,13 +4,13 @@ from __future__ import annotations
 import pytest
 
 from argus.branding import (
-    VISION,
     CONSTITUTION,
     PIPELINE,
-    logo,
+    VISION,
     eye_only,
-    wordmark_only,
+    logo,
     render_logo_jpeg,
+    wordmark_only,
 )
 
 

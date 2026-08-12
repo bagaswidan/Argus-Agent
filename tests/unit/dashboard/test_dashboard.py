@@ -1,21 +1,18 @@
 """Test Dashboard — Argus (Phase 6)."""
 from __future__ import annotations
 
-import json
-import threading
 import urllib.request
 
 import pytest
 
 from argus.dashboard import (
-    DASHBOARD_PORT,
+    create_dashboard_store,
     render_dashboard,
     run_dashboard_in_thread,
-    create_dashboard_store,
 )
-from argus.observability.metrics import Metric, MetricType, MetricsCollector
-from argus.observability.traces import Span, Trace, TraceStatus, Tracer
-from argus.observability.logs import LogEntry, LogLevel, LogCollector
+from argus.observability.logs import LogCollector
+from argus.observability.metrics import MetricsCollector
+from argus.observability.traces import Tracer
 
 
 @pytest.fixture

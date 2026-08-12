@@ -1,14 +1,18 @@
 """Test Observability — Argus Phase 2."""
 from __future__ import annotations
 
-import pytest
 import tempfile
 from pathlib import Path
 
-from argus.observability.metrics import MetricsCollector, Metric, MetricType, create_metrics_collector
-from argus.observability.traces import Tracer, Span, Trace, TraceStatus, create_tracer
+import pytest
+
 from argus.observability.logs import LogCollector, LogEntry, LogLevel, create_log_collector
-from argus.observability.store import ObservabilityStore, create_obs_store
+from argus.observability.metrics import (
+    Metric,
+    create_metrics_collector,
+)
+from argus.observability.store import create_obs_store
+from argus.observability.traces import Span, TraceStatus, create_tracer
 
 
 class TestMetricsCollector:

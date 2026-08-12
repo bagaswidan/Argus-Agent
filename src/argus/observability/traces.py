@@ -5,12 +5,11 @@ Distributed tracing with spans and trace tree.
 from __future__ import annotations
 
 import threading
-import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class TraceStatus(str, Enum):
@@ -27,29 +26,29 @@ class Span:
     name: str
     trace_id: str
     span_id: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     status: TraceStatus = TraceStatus.OK
-    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    end_time: Optional[datetime] = None
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
+    end_time: datetime | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def duration_ms(self) -> float:
-        end = self.end_time or datetime.now(timezone.utc)
+        end = self.end_time or datetime.now(UTC)
         return (end - self.start_time).total_seconds() * 1000
 
-    def add_event(self, name: str, attributes: Optional[dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         self.events.append(
             {
                 "name": name,
                 "attributes": attributes or {},
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
         )
 
     def end(self, status: TraceStatus = TraceStatus.OK) -> None:
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now(UTC)
         self.status = status
 
     def to_dict(self) -> dict[str, Any]:
@@ -74,16 +73,16 @@ class Trace:
     trace_id: str
     name: str
     spans: list[Span] = field(default_factory=list)
-    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    end_time: Optional[datetime] = None
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
+    end_time: datetime | None = None
 
     @property
     def duration_ms(self) -> float:
-        end = self.end_time or datetime.now(timezone.utc)
+        end = self.end_time or datetime.now(UTC)
         return (end - self.start_time).total_seconds() * 1000
 
     @property
-    def root_span(self) -> Optional[Span]:
+    def root_span(self) -> Span | None:
         for span in self.spans:
             if span.parent_id is None:
                 return span
@@ -102,7 +101,7 @@ class Trace:
         return TraceStatus.OK
 
     def finish(self) -> None:
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -120,7 +119,7 @@ class Trace:
 class Tracer:
     """Creates and manages traces and spans."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = threading.Lock()
         self._traces: dict[str, Trace] = {}
         self._active: dict[str, Span] = {}  # span_id -> span
@@ -139,9 +138,9 @@ class Tracer:
     def start_span(
         self,
         name: str,
-        trace: Optional[Trace] = None,
-        parent: Optional[Span] = None,
-        trace_id: Optional[str] = None,
+        trace: Trace | None = None,
+        parent: Span | None = None,
+        trace_id: str | None = None,
     ) -> Span:
         tid = trace.trace_id if trace else trace_id or uuid.uuid4().hex[:16]
 
@@ -151,10 +150,9 @@ class Tracer:
                 if trace is None:
                     trace = Trace(trace_id=tid, name=name)
                     self._traces[tid] = trace
-            else:
-                # Ensure a manually provided trace is indexed too
-                if trace.trace_id not in self._traces:
-                    self._traces[trace.trace_id] = trace
+            # Ensure a manually provided trace is indexed too
+            elif trace.trace_id not in self._traces:
+                self._traces[trace.trace_id] = trace
 
             span = Span(
                 name=name,
@@ -171,7 +169,7 @@ class Tracer:
         with self._lock:
             self._active.pop(span.span_id, None)
 
-    def get_trace(self, trace_id: str) -> Optional[Trace]:
+    def get_trace(self, trace_id: str) -> Trace | None:
         with self._lock:
             return self._traces.get(trace_id)
 

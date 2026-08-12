@@ -17,6 +17,10 @@ htmlcov/
 .aider*
 .aider.chat.history.md
 .aider.input.history
+.aider.tags.cache.v4/
+
+# Code-Review-Graph (knowledge graph DB — regenerable via build)
+.code-review-graph/
 
 # Env & secrets
 .env

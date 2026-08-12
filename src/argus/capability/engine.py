@@ -6,22 +6,22 @@ cost tracking, and execution policies.
 from __future__ import annotations
 
 import asyncio
-import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
-from argus.common.errors import ArgusError, TimeoutError as ArgusTimeoutError
+from argus.common.errors import ArgusError
 from argus.common.events import Event, EventBus, EventPriority
 from argus.common.logging import get_logger
 from argus.runtime.sandbox import (
+    AuditEntry,
+    ExecutionResult,
+    ResourceLimit,
     Sandbox,
     SandboxMode,
-    ResourceLimit,
-    ExecutionResult,
-    AuditEntry,
 )
 
 logger = get_logger(__name__)
@@ -46,7 +46,7 @@ class CapabilitySpec:
     retryable: bool = False
     estimated_cost_usd: float = 0.0
     estimated_duration_ms: int = 1000
-    resource_limit: Optional[ResourceLimit] = None
+    resource_limit: ResourceLimit | None = None
     tags: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -72,14 +72,14 @@ class ExecutionPolicy:
     max_retry_delay_seconds: float = 60.0
     timeout_seconds: int = 30
     sandbox_mode: SandboxMode = SandboxMode.THREAD  # Default to thread for local functions
-    resource_limit: Optional[ResourceLimit] = None
+    resource_limit: ResourceLimit | None = None
 
     @classmethod
-    def default(cls) -> "ExecutionPolicy":
+    def default(cls) -> ExecutionPolicy:
         return cls()
 
     @classmethod
-    def strict(cls) -> "ExecutionPolicy":
+    def strict(cls) -> ExecutionPolicy:
         return cls(
             max_retries=0,
             timeout_seconds=10,
@@ -88,7 +88,7 @@ class ExecutionPolicy:
         )
 
     @classmethod
-    def lenient(cls) -> "ExecutionPolicy":
+    def lenient(cls) -> ExecutionPolicy:
         return cls(
             max_retries=3,
             retry_policy=RetryPolicy.EXPONENTIAL,
@@ -108,7 +108,7 @@ class CapabilityExecution:
     correlation_id: str
     started_at: datetime
     attempt: int = 0
-    last_result: Optional[ExecutionResult] = None
+    last_result: ExecutionResult | None = None
     total_duration_ms: int = 0
     total_cost_usd: float = 0.0
 
@@ -122,7 +122,7 @@ class CapabilityEngineError(ArgusError):
 class CapabilityRegistry:
     """Registry for capability specifications."""
 
-    def __init__(self, event_bus: Optional[EventBus] = None):
+    def __init__(self, event_bus: EventBus | None = None):
         self._capabilities: dict[str, CapabilitySpec] = {}
         self._implementations: dict[str, Callable] = {}
         self._policies: dict[str, ExecutionPolicy] = {}
@@ -132,7 +132,7 @@ class CapabilityRegistry:
         self,
         spec: CapabilitySpec,
         implementation: Callable[..., Any],
-        policy: Optional[ExecutionPolicy] = None,
+        policy: ExecutionPolicy | None = None,
     ) -> None:
         """Register a capability with its implementation."""
         if spec.name in self._capabilities:
@@ -159,14 +159,14 @@ class CapabilityRegistry:
                             type="capability.registered",
                             payload={"name": spec.name, "spec": spec.to_dict()},
                             priority=EventPriority.NORMAL,
-                        )
-                    )
+                        ),
+                    ),
                 )
 
-    def get_spec(self, name: str) -> Optional[CapabilitySpec]:
+    def get_spec(self, name: str) -> CapabilitySpec | None:
         return self._capabilities.get(name)
 
-    def get_implementation(self, name: str) -> Optional[Callable]:
+    def get_implementation(self, name: str) -> Callable | None:
         return self._implementations.get(name)
 
     def get_policy(self, name: str) -> ExecutionPolicy:
@@ -191,7 +191,7 @@ class CapabilityEngine:
         self,
         registry: CapabilityRegistry,
         sandbox: Sandbox,
-        event_bus: Optional[EventBus] = None,
+        event_bus: EventBus | None = None,
     ):
         self.registry = registry
         self.sandbox = sandbox
@@ -201,10 +201,10 @@ class CapabilityEngine:
     async def execute(
         self,
         capability_name: str,
-        *args,
-        correlation_id: Optional[str] = None,
+        *args: Any,
+        correlation_id: str | None = None,
         input_summary: str = "",
-        **kwargs,
+        **kwargs: Any,
     ) -> ExecutionResult:
         """Execute a capability with retry logic and policy enforcement."""
         spec = self.registry.get_spec(capability_name)
@@ -229,7 +229,7 @@ class CapabilityEngine:
         execution = CapabilityExecution(
             capability_name=capability_name,
             correlation_id=cid,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         self._executions[cid] = execution
 
@@ -260,7 +260,7 @@ class CapabilityEngine:
                     ),
                     timeout=policy.timeout_seconds,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 result = ExecutionResult(
                     success=False,
                     error=f"Capability execution timeout ({policy.timeout_seconds}s)",
@@ -285,7 +285,7 @@ class CapabilityEngine:
             if attempt < max_attempts - 1 and spec.retryable:
                 delay = self._calculate_retry_delay(policy, attempt)
                 logger.info(
-                    f"Retrying capability '{capability_name}' (attempt {attempt + 2}/{max_attempts}) after {delay}s"
+                    f"Retrying capability '{capability_name}' (attempt {attempt + 2}/{max_attempts}) after {delay}s",
                 )
                 await asyncio.sleep(delay)
             else:
@@ -309,7 +309,7 @@ class CapabilityEngine:
 
         return min(delay, policy.max_retry_delay_seconds)
 
-    def get_execution(self, correlation_id: str) -> Optional[CapabilityExecution]:
+    def get_execution(self, correlation_id: str) -> CapabilityExecution | None:
         return self._executions.get(correlation_id)
 
     def get_audit_log(self) -> list[AuditEntry]:
@@ -324,12 +324,12 @@ def cap(
     retryable: bool = False,
     estimated_cost_usd: float = 0.0,
     estimated_duration_ms: int = 1000,
-    tags: list[str] = None,
-    policy: ExecutionPolicy = None,
-):
+    tags: list[str] | None = None,
+    policy: ExecutionPolicy | None = None,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register a capability."""
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         spec = CapabilitySpec(
             name=name,
             description=description,
@@ -341,8 +341,8 @@ def cap(
             tags=tags or [],
         )
         # Registry registration happens at engine startup
-        func._capability_spec = spec
-        func._capability_policy = policy
+        setattr(func, "_capability_spec", spec)
+        setattr(func, "_capability_policy", policy)
         return func
 
     return decorator
@@ -350,12 +350,12 @@ def cap(
 
 __all__ = [
     "CapabilityEngine",
+    "CapabilityEngineError",
+    "CapabilityExecution",
     "CapabilityRegistry",
     "CapabilitySpec",
     "ExecutionPolicy",
-    "RetryPolicy",
     "ExecutionResult",
-    "CapabilityExecution",
-    "CapabilityEngineError",
+    "RetryPolicy",
     "cap",
 ]

@@ -7,8 +7,8 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 
@@ -21,7 +21,7 @@ class AgentMessage:
     to_agent: str = ""  # Empty = broadcast
     message_type: str = "task"  # task, result, status, control
     payload: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     correlation_id: str = ""  # For request-response pairing
 
     def to_dict(self) -> dict[str, Any]:
@@ -39,19 +39,19 @@ class AgentMessage:
 class MessageBus:
     """Async message bus for agent communication."""
 
-    def __init__(self):
-        self._subscriptions: dict[str, list[asyncio.Queue]] = defaultdict(list)
-        self._broadcast_queue: asyncio.Queue = asyncio.Queue()
+    def __init__(self) -> None:
+        self._subscriptions: dict[str, list[asyncio.Queue[AgentMessage]]] = defaultdict(list)
+        self._broadcast_queue: asyncio.Queue[AgentMessage] = asyncio.Queue()
         self._history: list[AgentMessage] = []
         self._max_history = 1000
 
-    async def subscribe(self, agent_id: str) -> asyncio.Queue:
+    async def subscribe(self, agent_id: str) -> asyncio.Queue[AgentMessage]:
         """Subscribe an agent to receive messages."""
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: asyncio.Queue[AgentMessage] = asyncio.Queue()
         self._subscriptions[agent_id].append(queue)
         return queue
 
-    def unsubscribe(self, agent_id: str, queue: asyncio.Queue) -> None:
+    def unsubscribe(self, agent_id: str, queue: asyncio.Queue[AgentMessage]) -> None:
         """Unsubscribe an agent."""
         if agent_id in self._subscriptions:
             self._subscriptions[agent_id].remove(queue)
@@ -86,7 +86,7 @@ class MessageBus:
         message_type: str,
         payload: dict[str, Any],
         timeout: float = 30.0,
-    ) -> Optional[AgentMessage]:
+    ) -> AgentMessage | None:
         """Send a request and wait for response."""
         correlation_id = str(uuid4())
         request = AgentMessage(
@@ -105,13 +105,13 @@ class MessageBus:
         try:
             response = await asyncio.wait_for(response_queue.get(), timeout=timeout)
             return response
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
         finally:
             self.unsubscribe(f"{from_agent}:response:{correlation_id}", response_queue)
 
     def get_history(
-        self, agent_id: Optional[str] = None, limit: int = 100
+        self, agent_id: str | None = None, limit: int = 100,
     ) -> list[AgentMessage]:
         """Get message history."""
         if agent_id:
@@ -124,7 +124,7 @@ class MessageBus:
 
 
 # Global message bus instance
-_message_bus: Optional[MessageBus] = None
+_message_bus: MessageBus | None = None
 
 
 def get_message_bus() -> MessageBus:

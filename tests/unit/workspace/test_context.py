@@ -1,16 +1,16 @@
 """Test Workspace Context Manager — Argus."""
 from __future__ import annotations
 
-import pytest
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from argus.workspace.context import (
-    ContextFile,
-    WorkspaceContext,
-    load_workspace_context,
-    get_workspace_context_for_prompt,
     CONTEXT_FILES,
+    ContextFile,
+    get_workspace_context_for_prompt,
+    load_workspace_context,
 )
 
 

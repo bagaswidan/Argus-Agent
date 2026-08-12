@@ -3,12 +3,11 @@ from __future__ import annotations
 
 import json
 import threading
-import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from argus.brain.provider import OmniRouteProvider, ChatMessage, ChatResponse, create_provider
+from argus.brain.provider import ChatMessage, ChatResponse, create_provider
 
 
 class _MockHandler(BaseHTTPRequestHandler):
@@ -17,7 +16,7 @@ class _MockHandler(BaseHTTPRequestHandler):
     responses: list[dict] = []
     last_body: dict = {}
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length).decode())
         _MockHandler.last_body = body
@@ -32,7 +31,7 @@ class _MockHandler(BaseHTTPRequestHandler):
                     "index": 0,
                     "finish_reason": "stop",
                     "message": {"role": "assistant", "content": "Halo dari mock!"},
-                }
+                },
             ],
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         }
@@ -44,7 +43,7 @@ class _MockHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def log_message(self, *args):  # noqa: D102
+    def log_message(self, *args):
         pass
 
 

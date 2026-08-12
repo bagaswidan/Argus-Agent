@@ -5,11 +5,10 @@ Counter, gauge, and histogram metric collection.
 from __future__ import annotations
 
 import threading
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class MetricType(str, Enum):
@@ -26,7 +25,7 @@ class Metric:
     value: float
     metric_type: MetricType = MetricType.COUNTER
     labels: dict[str, str] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,7 +65,7 @@ class MetricsCollector:
         self,
         name: str,
         value: float = 1.0,
-        labels: Optional[dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Increment a counter."""
         labels = labels or {}
@@ -79,7 +78,7 @@ class MetricsCollector:
         self,
         name: str,
         value: float,
-        labels: Optional[dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Set a gauge value."""
         labels = labels or {}
@@ -92,7 +91,7 @@ class MetricsCollector:
         self,
         name: str,
         value: float,
-        labels: Optional[dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Record a histogram observation."""
         labels = labels or {}
@@ -110,13 +109,13 @@ class MetricsCollector:
         if len(self._samples) > self._max_samples:
             self._samples = self._samples[-self._max_samples:]
 
-    def get_counter(self, name: str, labels: Optional[dict[str, str]] = None) -> float:
+    def get_counter(self, name: str, labels: dict[str, str] | None = None) -> float:
         labels = labels or {}
         key = (name, self._labels_key(labels))
         with self._lock:
             return self._counters.get(key, 0.0)
 
-    def get_gauge(self, name: str, labels: Optional[dict[str, str]] = None) -> Optional[float]:
+    def get_gauge(self, name: str, labels: dict[str, str] | None = None) -> float | None:
         labels = labels or {}
         key = (name, self._labels_key(labels))
         with self._lock:
@@ -125,7 +124,7 @@ class MetricsCollector:
     def get_histogram_stats(
         self,
         name: str,
-        labels: Optional[dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> dict[str, float]:
         """Get histogram stats: count, sum, min, max, mean, p50, p95, p99."""
         labels = labels or {}

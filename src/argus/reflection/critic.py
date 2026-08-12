@@ -5,9 +5,9 @@ Agent that reviews and critiques outputs for quality, correctness, and completen
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class CritiqueSeverity(str, Enum):
@@ -72,7 +72,7 @@ class CritiqueResult:
     findings: list[CritiqueFinding] = field(default_factory=list)
     overall_score: float = 1.0  # 0.0 - 1.0
     passed: bool = True
-    reviewed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    reviewed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     reviewer_id: str = ""
 
     def add_finding(self, finding: CritiqueFinding) -> None:
@@ -127,7 +127,7 @@ class Critic:
 
     def __init__(
         self,
-        config: Optional[CritiqueConfig] = None,
+        config: CritiqueConfig | None = None,
         reviewer_id: str = "critic",
     ):
         self.config = config or CritiqueConfig()
@@ -136,8 +136,8 @@ class Critic:
     async def critique(
         self,
         output: str,
-        context: Optional[dict[str, Any]] = None,
-        expected_output: Optional[str] = None,
+        context: dict[str, Any] | None = None,
+        expected_output: str | None = None,
     ) -> CritiqueResult:
         """Review an output and return critique findings."""
         result = CritiqueResult(
@@ -184,11 +184,10 @@ class Critic:
     async def _check_completeness(
         self,
         output: str,
-        context: Optional[dict[str, Any]],
+        context: dict[str, Any] | None,
         result: CritiqueResult,
     ) -> None:
         """Check if output is complete relative to context."""
-
         # Empty output should always be flagged
         if not output.strip():
             result.add_finding(
@@ -199,7 +198,7 @@ class Critic:
                     location="output",
                     suggestion="Provide substantive content",
                     confidence=1.0,
-                )
+                ),
             )
 
         if not context:
@@ -217,7 +216,7 @@ class Critic:
                         location="output",
                         suggestion=f"Add section covering {section}",
                         confidence=0.8,
-                    )
+                    ),
                 )
 
         # Check minimum length - always check this even if not in context
@@ -231,7 +230,7 @@ class Critic:
                     location="output",
                     suggestion="Expand the output with more detail",
                     confidence=0.9,
-                )
+                ),
             )
 
     async def _check_clarity(self, output: str, result: CritiqueResult) -> None:
@@ -248,7 +247,7 @@ class Critic:
                         location=f"sentence {i + 1}",
                         suggestion="Break into shorter sentences",
                         confidence=0.7,
-                    )
+                    ),
                 )
 
         # Check for unclear references
@@ -272,13 +271,11 @@ class Critic:
                         location="output",
                         suggestion="Replace with specific nouns",
                         confidence=0.5,
-                    )
+                    ),
                 )
 
     async def _check_consistency(self, output: str, result: CritiqueResult) -> None:
         """Check for internal consistency."""
-        import re
-
         # Look for contradictory statements
         lines = output.split("\n")
         for i, line in enumerate(lines):
@@ -293,7 +290,7 @@ class Critic:
                         location=f"line {i + 1}",
                         suggestion="Review for logical consistency",
                         confidence=0.4,
-                    )
+                    ),
                 )
 
     async def _check_security(self, output: str, result: CritiqueResult) -> None:
@@ -318,7 +315,7 @@ class Critic:
                             location="output",
                             suggestion="Remove sensitive data before output",
                             confidence=0.8,
-                        )
+                        ),
                     )
 
     async def _check_custom(
@@ -354,5 +351,5 @@ class Critic:
                         location="output",
                         suggestion="Review expected content and ensure coverage",
                         confidence=0.6,
-                    )
+                    ),
                 )

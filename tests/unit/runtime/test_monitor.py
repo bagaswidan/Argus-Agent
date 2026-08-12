@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from argus.runtime.monitor import RuntimeMonitor, create_runtime_monitor
+from argus.runtime.monitor import create_runtime_monitor
 
 
 class TestRuntimeMonitor:

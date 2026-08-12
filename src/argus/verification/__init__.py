@@ -9,8 +9,9 @@ Checks run in order; the first failure short-circuits with a report.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 CheckFn = Callable[[dict[str, Any]], tuple[bool, str]]
 
@@ -79,7 +80,7 @@ DEFAULT_CHECKS: list[tuple[str, CheckFn]] = [
 class VerificationStage:
     """Runs pluggable checks over an execution result."""
 
-    def __init__(self, checks: Optional[list[tuple[str, CheckFn]]] = None):
+    def __init__(self, checks: list[tuple[str, CheckFn]] | None = None):
         self.checks = checks or list(DEFAULT_CHECKS)
 
     def add_check(self, name: str, fn: CheckFn) -> None:
@@ -91,7 +92,7 @@ class VerificationStage:
             v.checks_run += 1
             try:
                 ok, message = fn(result)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 ok, message = False, f"check raised: {exc}"
             if not ok:
                 v.passed = False

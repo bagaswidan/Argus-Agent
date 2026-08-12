@@ -1,12 +1,11 @@
 """Test Curator — Argus (Phase 11: Self Evolution)."""
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from argus.curator import Curator, UsageTracker, create_curator, create_usage_tracker
+from argus.curator import create_curator, create_usage_tracker
 
 
 @pytest.fixture
@@ -61,7 +60,7 @@ class TestCurator:
     def _seed_old_record(self, tracker, name, uses, days_ago):
         tracker.record_use(name, success=True)
         rec = tracker.get(name)
-        old = datetime.now(timezone.utc) - timedelta(days=days_ago)
+        old = datetime.now(UTC) - timedelta(days=days_ago)
         rec.last_used_at = old.isoformat()
         rec.use_count = uses
         rec.success_count = uses

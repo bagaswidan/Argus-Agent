@@ -1,9 +1,7 @@
 """Test Model Router — Argus Brain."""
 from __future__ import annotations
 
-import pytest
-
-from argus.brain.router import ModelRouter, ModelResolution
+from argus.brain.router import ModelRouter
 
 
 class TestModelRouterBasics:

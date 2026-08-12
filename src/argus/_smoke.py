@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import tempfile
 from pathlib import Path
+from typing import Any
 
 
 def run_smoke(verbose: bool = False) -> bool:
@@ -55,9 +56,9 @@ def run_smoke(verbose: bool = False) -> bool:
 
         # 5. Capability engine + sandbox
         from argus.capability.engine import CapabilityEngine, CapabilityRegistry, CapabilitySpec
-        from argus.runtime.sandbox import Sandbox
+        from argus.runtime.sandbox import ExecutionResult, Sandbox
 
-        def add(a: int = 0, b: int = 0, **kw) -> int:
+        def add(a: int = 0, b: int = 0, **kw: Any) -> int:
             return a + b
 
         registry = CapabilityRegistry()
@@ -72,7 +73,7 @@ def run_smoke(verbose: bool = False) -> bool:
         )
         engine = CapabilityEngine(registry, Sandbox())
 
-        async def run_cap():
+        async def run_cap() -> ExecutionResult:
             r = await engine.execute("math.add", a=2, b=3)
             assert r.success, f"cap failed: {r.error}"
             return r
@@ -81,13 +82,13 @@ def run_smoke(verbose: bool = False) -> bool:
         log(f"[5] Capability: OK (output={cap.output!r})")
 
         # 6. Orchestrator
-        from argus.orchestrator.orchestrator import create_orchestrator
-        from argus.orchestrator.agent import AgentSpec, AgentRole
+        from argus.orchestrator.agent import AgentRole, AgentSpec
+        from argus.orchestrator.orchestrator import OrchestrationResult, create_orchestrator
 
         orch = create_orchestrator(engine, registry, Sandbox())
         spec = AgentSpec(name="Worker", role=AgentRole.WORKER, capabilities=["math.add"])
 
-        async def run_plan():
+        async def run_plan() -> OrchestrationResult:
             plan = await orch.create_plan("Add", [spec])
             result = await orch.execute_plan(plan)
             assert result.success, f"plan failed: {result.errors}"
@@ -99,7 +100,7 @@ def run_smoke(verbose: bool = False) -> bool:
         # 7. Reflection
         from argus.reflection.loop import ReflectionLoop
 
-        async def revise(out, critique):
+        async def revise(out: str, critique: object) -> str:
             return "Improved " + out
 
         ref = asyncio.run(ReflectionLoop().run("Test", revise))
@@ -107,10 +108,10 @@ def run_smoke(verbose: bool = False) -> bool:
         log(f"[7] Reflection: OK ({ref.stopped_reason})")
 
         # 8. Observability
-        from argus.observability.metrics import create_metrics_collector
-        from argus.observability.traces import create_tracer
         from argus.observability.logs import create_log_collector
+        from argus.observability.metrics import create_metrics_collector
         from argus.observability.store import create_obs_store
+        from argus.observability.traces import create_tracer
 
         mc = create_metrics_collector()
         mc.increment("smoke", 3)

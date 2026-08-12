@@ -2,23 +2,21 @@
 from __future__ import annotations
 
 import asyncio
+
 import pytest
 
-from argus.runtime.scheduler import Scheduler, create_scheduler
+from argus.runtime.lock import LockError, create_lock_manager
+from argus.runtime.scheduler import create_scheduler
 from argus.runtime.state import (
-    StateManager,
-    WorkflowState,
     StateTransitionError,
+    WorkflowState,
     create_state_manager,
 )
 from argus.runtime.transaction import (
-    TransactionManager,
-    TransactionStatus,
     RecoveryStrategy,
+    TransactionStatus,
     create_transaction_manager,
 )
-from argus.runtime.lock import LockManager, LockError, create_lock_manager
-
 
 # --- Scheduler ---
 

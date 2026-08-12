@@ -5,14 +5,14 @@ before finalizing.
 """
 from __future__ import annotations
 
-from argus.reflection.critic import Critic, CritiqueResult, CritiqueConfig
-from argus.reflection.loop import ReflectionLoop, ReflectionConfig, ReflectionResult
+from argus.reflection.critic import Critic, CritiqueConfig, CritiqueResult
+from argus.reflection.loop import ReflectionConfig, ReflectionLoop, ReflectionResult
 
 __all__ = [
     "Critic",
-    "CritiqueResult",
     "CritiqueConfig",
-    "ReflectionLoop",
+    "CritiqueResult",
     "ReflectionConfig",
+    "ReflectionLoop",
     "ReflectionResult",
 ]

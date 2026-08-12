@@ -7,29 +7,43 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, TypeAlias
 
-try:
-    from aiohttp import web
+if TYPE_CHECKING:
+    # aiohttp is an optional runtime dependency. When it is not installed
+    # (e.g. in CI) we fall back to `object` stubs at runtime and type the
+    # aliases as `Any` so type checking still passes.
+    web: Any
+    WebApplication: TypeAlias = Any
+    WebAppRunner: TypeAlias = Any
+    WebTCPSite: TypeAlias = Any
+    WebRequest: TypeAlias = Any
+    WebResponse: TypeAlias = Any
+    WebMiddleware: TypeAlias = Any
     AIOHTTP_AVAILABLE = True
-    WebApplication = web.Application
-    WebAppRunner = web.AppRunner
-    WebTCPSite = web.TCPSite
-    WebRequest = web.Request
-    WebResponse = web.Response
-    WebMiddleware = web.middleware
-except ImportError:
-    AIOHTTP_AVAILABLE = False
-    WebApplication = object
-    WebAppRunner = object
-    WebTCPSite = object
-    WebRequest = object
-    WebResponse = object
-    WebMiddleware = lambda f: f  # no-op decorator when aiohttp not available
+else:
+    try:
+        from aiohttp import web
 
-from argus.gateway.auth import AuthManager, TokenData
+        AIOHTTP_AVAILABLE = True
+        WebApplication = web.Application
+        WebAppRunner = web.AppRunner
+        WebTCPSite = web.TCPSite
+        WebRequest = web.Request
+        WebResponse = web.Response
+        WebMiddleware = web.middleware
+    except ImportError:
+        AIOHTTP_AVAILABLE = False
+        WebApplication = object
+        WebAppRunner = object
+        WebTCPSite = object
+        WebRequest = object
+        WebResponse = object
+        WebMiddleware = lambda f: f  # no-op decorator when aiohttp not available
+
 from argus.gateway.adapters import (
     PlatformAdapter,
     PlatformMessage,
@@ -38,7 +52,7 @@ from argus.gateway.adapters import (
     adapter_registry,
     create_adapter,
 )
-
+from argus.gateway.auth import AuthManager, TokenData
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +63,7 @@ class GatewayConfig:
 
     host: str = "0.0.0.0"
     port: int = 8080
-    auth: Optional[AuthManager] = None
+    auth: AuthManager | None = None
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
     max_message_size: int = 1024 * 1024  # 1MB
     request_timeout: int = 30
@@ -60,15 +74,15 @@ class GatewayServer:
 
     def __init__(
         self,
-        config: Optional[GatewayConfig] = None,
-        message_handler: Optional[Callable[[PlatformMessage], Any]] = None,
+        config: GatewayConfig | None = None,
+        message_handler: Callable[[PlatformMessage], Any] | None = None,
     ):
         self.config = config or GatewayConfig()
         self.message_handler = message_handler
         self.auth = self.config.auth or AuthManager()
-        self._app: Optional[WebApplication] = None
-        self._runner: Optional[WebAppRunner] = None
-        self._site: Optional[WebTCPSite] = None
+        self._app: WebApplication | None = None
+        self._runner: WebAppRunner | None = None
+        self._site: WebTCPSite | None = None
         self._adapters: dict[PlatformType, PlatformAdapter] = {}
         self._adapters_lock = asyncio.Lock()
         self._running = False
@@ -171,7 +185,7 @@ class GatewayServer:
                 return True
         return False
 
-    async def broadcast(self, response: PlatformResponse, platforms: Optional[list[PlatformType]] = None) -> dict[PlatformType, bool]:
+    async def broadcast(self, response: PlatformResponse, platforms: list[PlatformType] | None = None) -> dict[PlatformType, bool]:
         """Send a message to multiple platforms."""
         async with self._adapters_lock:
             targets = platforms if platforms is not None else list(self._adapters.keys())
@@ -202,7 +216,7 @@ class GatewayServer:
             }
         return web.json_response({
             "status": "healthy",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "adapters": adapters_status,
         })
 
@@ -317,11 +331,14 @@ class GatewayServer:
 
         if token_data:
             return web.json_response({"valid": True, "token_data": token_data.to_dict()})
-        else:
-            return web.json_response({"valid": False, "error": "Invalid or expired token"}, status=401)
+        return web.json_response({"valid": False, "error": "Invalid or expired token"}, status=401)
 
     @WebMiddleware
-    async def _cors_middleware(self, request: WebRequest, handler):
+    async def _cors_middleware(
+        self,
+        request: WebRequest,
+        handler: Callable[[Any], Awaitable[WebResponse]],
+    ) -> WebResponse:
         origin = request.headers.get("Origin", "")
         if request.method == "OPTIONS":
             # Handle CORS preflight
@@ -334,8 +351,7 @@ class GatewayServer:
                         "Access-Control-Allow-Headers": "Content-Type, Authorization",
                     },
                 )
-            else:
-                return web.Response(status=200)
+            return web.Response(status=200)
 
         response = await handler(request)
         if self.config.cors_origins == ["*"] or origin in self.config.cors_origins:
@@ -348,7 +364,7 @@ class GatewayServer:
 def create_gateway_server(
     host: str = "0.0.0.0",
     port: int = 8080,
-    message_handler: Optional[Callable[[PlatformMessage], Any]] = None,
+    message_handler: Callable[[PlatformMessage], Any] | None = None,
 ) -> GatewayServer:
     """Factory function to create a gateway server."""
     config = GatewayConfig(host=host, port=port)

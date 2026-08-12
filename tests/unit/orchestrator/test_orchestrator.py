@@ -2,20 +2,24 @@
 from __future__ import annotations
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from argus.orchestrator.agent import AgentSpec, AgentRole, AgentState, AgentInstance
-from argus.orchestrator.communication import MessageBus, AgentMessage, get_message_bus
+import pytest
+
+from argus.capability.engine import (
+    CapabilityEngine,
+    CapabilityRegistry,
+    CapabilitySpec,
+    ExecutionPolicy,
+)
+from argus.orchestrator.agent import AgentInstance, AgentRole, AgentSpec, AgentState
+from argus.orchestrator.communication import AgentMessage, MessageBus
 from argus.orchestrator.orchestrator import (
-    MultiAgentOrchestrator,
-    OrchestrationTask,
     OrchestrationPlan,
     OrchestrationResult,
+    OrchestrationTask,
     create_orchestrator,
 )
-from argus.capability.engine import CapabilityEngine, CapabilityRegistry, CapabilitySpec, ExecutionPolicy
-from argus.runtime.sandbox import Sandbox, ResourceLimit
+from argus.runtime.sandbox import ResourceLimit, Sandbox
 
 
 class TestAgentSpec:

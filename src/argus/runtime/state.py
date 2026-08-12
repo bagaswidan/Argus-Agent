@@ -8,9 +8,9 @@ from __future__ import annotations
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class WorkflowState(str, Enum):
@@ -48,13 +48,13 @@ class WorkflowRecord:
 
     workflow_id: str
     state: WorkflowState = WorkflowState.CREATED
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     data: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def touch(self) -> None:
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 class StateManager:
@@ -64,7 +64,7 @@ class StateManager:
         self._lock = threading.Lock()
         self._records: dict[str, WorkflowRecord] = {}
 
-    def create(self, workflow_id: Optional[str] = None, parent_id: Optional[str] = None, data: Optional[dict[str, Any]] = None) -> WorkflowRecord:
+    def create(self, workflow_id: str | None = None, parent_id: str | None = None, data: dict[str, Any] | None = None) -> WorkflowRecord:
         wid = workflow_id or uuid.uuid4().hex[:16]
         record = WorkflowRecord(
             workflow_id=wid,
@@ -83,13 +83,13 @@ class StateManager:
             allowed = _VALID_TRANSITIONS.get(record.state, set())
             if new_state not in allowed:
                 raise StateTransitionError(
-                    f"Invalid transition {record.state.value} -> {new_state.value} for {workflow_id}"
+                    f"Invalid transition {record.state.value} -> {new_state.value} for {workflow_id}",
                 )
             record.state = new_state
             record.touch()
             return record
 
-    def get(self, workflow_id: str) -> Optional[WorkflowRecord]:
+    def get(self, workflow_id: str) -> WorkflowRecord | None:
         with self._lock:
             return self._records.get(workflow_id)
 
@@ -102,7 +102,7 @@ class StateManager:
             record.touch()
             return True
 
-    def list_workflows(self, state: Optional[WorkflowState] = None) -> list[WorkflowRecord]:
+    def list_workflows(self, state: WorkflowState | None = None) -> list[WorkflowRecord]:
         with self._lock:
             records = list(self._records.values())
         if state is not None:

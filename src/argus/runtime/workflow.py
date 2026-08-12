@@ -9,10 +9,11 @@ import asyncio
 import threading
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
-from argus.runtime.state import StateManager, WorkflowState, StateTransitionError
+from argus.runtime.state import StateManager, StateTransitionError, WorkflowState
 
 
 class WorkflowError(Exception):
@@ -25,14 +26,14 @@ class WorkflowStep:
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     name: str = ""
-    fn: Optional[Callable[..., Awaitable[Any]]] = None
+    fn: Callable[..., Awaitable[Any]] | None = None
     args: tuple = ()
     kwargs: dict[str, Any] = field(default_factory=dict)
     timeout: float = 30.0
     retries: int = 0
     status: str = "pending"  # pending | running | completed | failed | skipped
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -45,7 +46,7 @@ class WorkflowRun:
     state: WorkflowState = WorkflowState.CREATED
     current_step: int = 0
     data: dict[str, Any] = field(default_factory=dict)
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     created_at: float = field(default_factory=time.monotonic)
 
     @property
@@ -56,7 +57,7 @@ class WorkflowRun:
 class WorkflowEngine:
     """Executes step-based workflows with checkpoint, pause/resume, retry."""
 
-    def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+    def __init__(self, state_manager: StateManager | None = None) -> None:
         self._state = state_manager or StateManager()
         self._runs: dict[str, WorkflowRun] = {}
         self._paused: dict[str, asyncio.Event] = {}
@@ -67,7 +68,7 @@ class WorkflowEngine:
         self,
         name: str,
         steps: list[WorkflowStep],
-        parent_id: Optional[str] = None,
+        parent_id: str | None = None,
     ) -> WorkflowRun:
         run = WorkflowRun(
             workflow_id=uuid.uuid4().hex[:16],
@@ -81,7 +82,7 @@ class WorkflowEngine:
             self._state.transition(run.workflow_id, WorkflowState.QUEUED)
         return run
 
-    def get(self, workflow_id: str) -> Optional[WorkflowRun]:
+    def get(self, workflow_id: str) -> WorkflowRun | None:
         with self._semaphore:
             return self._runs.get(workflow_id)
 
@@ -133,7 +134,7 @@ class WorkflowEngine:
                         if attempt > step.retries:
                             step.status = "failed"
                             raise WorkflowError(
-                                f"Step '{step.name}' failed after {attempt} attempts: {e}"
+                                f"Step '{step.name}' failed after {attempt} attempts: {e}",
                             )
                         await asyncio.sleep(0.1 * attempt)
 
@@ -144,7 +145,7 @@ class WorkflowEngine:
             self._state.transition(workflow_id, WorkflowState.VERIFYING)
             self._state.transition(workflow_id, WorkflowState.COMPLETED)
             run.state = WorkflowState.COMPLETED
-        except WorkflowError as e:
+        except WorkflowError:
             self._state.transition(workflow_id, WorkflowState.FAILED)
             run.state = WorkflowState.FAILED
             raise
@@ -203,5 +204,5 @@ class WorkflowEngine:
             )
 
 
-def create_workflow_engine(state_manager: Optional[StateManager] = None) -> WorkflowEngine:
+def create_workflow_engine(state_manager: StateManager | None = None) -> WorkflowEngine:
     return WorkflowEngine(state_manager=state_manager)

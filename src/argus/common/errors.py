@@ -6,7 +6,6 @@ All errors are JSON-serializable for observability.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -15,6 +14,7 @@ from uuid import uuid4
 
 class ErrorCode(str, Enum):
     """Standard error codes."""
+
     CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
     VALIDATION_ERROR = "VALIDATION_ERROR"
     NOT_FOUND = "NOT_FOUND"
@@ -77,6 +77,7 @@ class ArgusError(Exception):
 
 class ConfigurationError(ArgusError):
     """Configuration loading/validation error."""
+
     code = ErrorCode.CONFIGURATION_ERROR
 
 
@@ -84,6 +85,7 @@ class ConfigurationError(ArgusError):
 
 class ValidationError(ArgusError):
     """Input/output validation error."""
+
     code = ErrorCode.VALIDATION_ERROR
 
 
@@ -91,11 +93,13 @@ class ValidationError(ArgusError):
 
 class NotFoundError(ArgusError):
     """Resource not found."""
+
     code = ErrorCode.NOT_FOUND
 
 
 class ConflictError(ArgusError):
     """Resource conflict (already exists, version mismatch)."""
+
     code = ErrorCode.CONFLICT
 
 
@@ -103,11 +107,13 @@ class ConflictError(ArgusError):
 
 class UnauthorizedError(ArgusError):
     """Authentication required or invalid."""
+
     code = ErrorCode.UNAUTHORIZED
 
 
 class ForbiddenError(ArgusError):
     """Authenticated but not authorized."""
+
     code = ErrorCode.FORBIDDEN
 
 
@@ -115,6 +121,7 @@ class ForbiddenError(ArgusError):
 
 class TimeoutError(ArgusError):
     """Operation timed out."""
+
     code = ErrorCode.TIMEOUT
     retryable = True
 
@@ -123,10 +130,12 @@ class TimeoutError(ArgusError):
 
 class InternalError(ArgusError):
     """Unexpected internal error."""
+
     code = ErrorCode.INTERNAL_ERROR
 
 
 class ExternalServiceError(ArgusError):
     """Downstream service error."""
+
     code = ErrorCode.EXTERNAL_SERVICE_ERROR
     retryable = True

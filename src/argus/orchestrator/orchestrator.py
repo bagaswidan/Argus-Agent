@@ -8,14 +8,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from argus.capability.engine import CapabilityEngine, CapabilityRegistry
-from argus.orchestrator.agent import AgentInstance, AgentRole, AgentSpec, AgentState
-from argus.orchestrator.communication import AgentMessage, MessageBus, get_message_bus
-from argus.runtime.sandbox import Sandbox, ResourceLimit
+from argus.orchestrator.agent import AgentInstance, AgentSpec, AgentState
+from argus.orchestrator.communication import MessageBus, get_message_bus
+from argus.runtime.sandbox import Sandbox
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +29,11 @@ class OrchestrationTask:
     assigned_agent: str = ""  # Agent ID
     dependencies: list[str] = field(default_factory=list)  # Task IDs
     status: str = "pending"  # pending, running, completed, failed
-    result: Optional[str] = None
-    error: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    result: str | None = None
+    error: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 @dataclass
@@ -43,7 +43,7 @@ class OrchestrationPlan:
     goal: str
     tasks: list[OrchestrationTask] = field(default_factory=list)
     agents: list[AgentSpec] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -56,8 +56,8 @@ class OrchestrationResult:
     agent_results: dict[str, str] = field(default_factory=dict)  # agent_id -> result
     errors: dict[str, str] = field(default_factory=dict)
     total_duration_ms: int = 0
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -95,7 +95,7 @@ class MultiAgentOrchestrator:
         capability_engine: CapabilityEngine,
         capability_registry: CapabilityRegistry,
         sandbox: Sandbox,
-        message_bus: Optional[MessageBus] = None,
+        message_bus: MessageBus | None = None,
     ):
         self.capability_engine = capability_engine
         self.capability_registry = capability_registry
@@ -135,7 +135,7 @@ class MultiAgentOrchestrator:
 
     async def execute_plan(self, plan: OrchestrationPlan) -> OrchestrationResult:
         """Execute an orchestration plan."""
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         agent_results = {}
         errors = {}
 
@@ -196,7 +196,7 @@ class MultiAgentOrchestrator:
             for agent_id, queue in agent_queues.items():
                 self.message_bus.unsubscribe(agent_id, queue)
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
         return OrchestrationResult(
@@ -215,7 +215,7 @@ class MultiAgentOrchestrator:
         agent.state = AgentState.RUNNING
         agent.assigned_task = task.description
         task.status = "running"
-        task.started_at = datetime.now(timezone.utc)
+        task.started_at = datetime.now(UTC)
 
         # Build context from dependencies
         context = {}
@@ -256,13 +256,13 @@ class MultiAgentOrchestrator:
             logger.error(f"Task {task.id} failed: {e}")
 
         finally:
-            task.completed_at = datetime.now(timezone.utc)
+            task.completed_at = datetime.now(UTC)
             agent.completed_at = task.completed_at
 
-    def get_agent(self, agent_id: str) -> Optional[AgentInstance]:
+    def get_agent(self, agent_id: str) -> AgentInstance | None:
         return self._agents.get(agent_id)
 
-    def get_task(self, task_id: str) -> Optional[OrchestrationTask]:
+    def get_task(self, task_id: str) -> OrchestrationTask | None:
         return self._tasks.get(task_id)
 
     def get_all_tasks(self) -> list[OrchestrationTask]:
@@ -273,7 +273,7 @@ def create_orchestrator(
     capability_engine: CapabilityEngine,
     capability_registry: CapabilityRegistry,
     sandbox: Sandbox,
-    message_bus: Optional[MessageBus] = None,
+    message_bus: MessageBus | None = None,
 ) -> MultiAgentOrchestrator:
     """Factory function to create an orchestrator."""
     return MultiAgentOrchestrator(

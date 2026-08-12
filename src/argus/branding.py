@@ -10,6 +10,10 @@ Blueprint source: Argus Engineering Specification v1.0 (PART 1).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PIL import ImageFont
 
 # ---------------------------------------------------------------------------
 # Visi & Misi dari blueprint (PART 1 §2, §3)
@@ -42,7 +46,7 @@ PIPELINE = (
 # ---------------------------------------------------------------------------
 # ASCII logo
 # ---------------------------------------------------------------------------
-LOGO_ASCII = r'''
+LOGO_ASCII = r"""
         .-"++++"-.
        .'  ####  '.
       (    ######    )
@@ -52,15 +56,15 @@ LOGO_ASCII = r'''
       (    ######    )
        '.  ####  .'
          '-....-'
-'''
+"""
 
-WORDMARK = r'''
+WORDMARK = r"""
     ___    ____  ________  _______
    /   |  / __ \/ ____/ / / / ___/
   / /| | / /_/ / / __/ / / /\__ \
  / ___ |/ _, _/ /_/ / /_/ /___/ /
 /_/  |_/_/ |_|\____/\____//____/
-'''
+"""
 
 
 def logo() -> str:
@@ -119,18 +123,18 @@ _FONT_MONO_CANDIDATES = [
 ]
 
 
-def _load_font(candidates: list[str], size: int):
+def _load_font(candidates: list[str], size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     from PIL import ImageFont
 
     for path in candidates:
         try:
             return ImageFont.truetype(path, size)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
     return ImageFont.load_default(size)
 
 
-def render_logo_jpeg(path: Optional[str] = None, width: int = 1000) -> str:
+def render_logo_jpeg(path: str | None = None, width: int = 1000) -> str:
     import tempfile
     path = path or str(Path(tempfile.gettempdir()) / "argus_logo.jpg")
     import math

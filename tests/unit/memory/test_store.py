@@ -1,11 +1,12 @@
 """Test Memory Store — Argus."""
 from __future__ import annotations
 
-import pytest
 import tempfile
 from pathlib import Path
 
-from argus.memory.store import MemoryStore, MemoryEntry, SearchResult, create_memory_store
+import pytest
+
+from argus.memory.store import MemoryEntry, SearchResult, create_memory_store
 
 
 class TestMemoryStoreBasics:
@@ -181,7 +182,7 @@ class TestMemoryStoreHybridSearch:
             store.add("slow dog", embedding=[0.0, 0.0])
 
             results = store.search_hybrid(
-                "quick", query_embedding=[1.0, 0.0], limit=2
+                "quick", query_embedding=[1.0, 0.0], limit=2,
             )
             assert len(results) >= 1
             # Both FTS and vector should match "quick fox"

@@ -2,11 +2,18 @@
 from __future__ import annotations
 
 import asyncio
+
 import pytest
 
-from argus.capability.engine import CapabilityEngine, CapabilityRegistry, CapabilitySpec, ExecutionPolicy, RetryPolicy
-from argus.runtime.sandbox import Sandbox, ResourceLimit
+from argus.capability.engine import (
+    CapabilityEngine,
+    CapabilityRegistry,
+    CapabilitySpec,
+    ExecutionPolicy,
+    RetryPolicy,
+)
 from argus.common.events import EventBus
+from argus.runtime.sandbox import ResourceLimit, Sandbox
 
 
 class TestCapabilityEngineExecution:

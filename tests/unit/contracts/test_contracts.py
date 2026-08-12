@@ -4,12 +4,12 @@ from __future__ import annotations
 import pytest
 
 from argus.contracts.types import (
-    Request,
-    Decision,
     CapabilityRequest,
+    ContractValidationError,
+    Decision,
     ExecutionResultContract,
     FailureObject,
-    ContractValidationError,
+    Request,
     validate_contract,
 )
 

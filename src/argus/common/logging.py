@@ -50,7 +50,7 @@ def configure_logging(
     )
 
     # Configure structlog
-    shared_processors = [
+    shared_processors: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
@@ -60,7 +60,7 @@ def configure_logging(
     ]
 
     if format == LogFormat.JSON:
-        renderer = structlog.processors.JSONRenderer()
+        renderer: structlog.typing.Processor = structlog.processors.JSONRenderer()
     else:
         renderer = structlog.dev.ConsoleRenderer(colors=True)
 
@@ -94,10 +94,10 @@ class _NamedLogger:
     def __getattr__(self, attr: str) -> Any:
         return getattr(self._logger, attr)
 
-    def bind(self, **kwargs: Any) -> "_NamedLogger":
+    def bind(self, **kwargs: Any) -> _NamedLogger:
         return _NamedLogger(self._name, self._logger.bind(**kwargs))
 
-    def new(self, **kwargs: Any) -> "_NamedLogger":
+    def new(self, **kwargs: Any) -> _NamedLogger:
         return _NamedLogger(self._name, self._logger.new(**kwargs))
 
 

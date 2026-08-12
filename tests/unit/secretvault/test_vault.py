@@ -1,12 +1,13 @@
 """Test SecretVault — Argus Phase 2."""
 from __future__ import annotations
 
-import pytest
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from argus.secretvault.vault import SecretVault, VaultConfig, SecretEntry, create_vault
+import pytest
+
+from argus.secretvault.vault import SecretEntry, create_vault
 
 
 class TestSecretEntry:
@@ -22,7 +23,7 @@ class TestSecretEntry:
         assert entry.is_expired() is False
 
     def test_is_expired_true(self):
-        past = datetime.now(timezone.utc) - timedelta(hours=1)
+        past = datetime.now(UTC) - timedelta(hours=1)
         entry = SecretEntry(key="test", value="secret", expires_at=past)
         assert entry.is_expired() is True
 
@@ -39,8 +40,8 @@ class TestSecretEntry:
             "value": "secret",
             "metadata": {"env": "prod"},
             "tags": ["tag1"],
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "expires_at": None,
         }
         entry = SecretEntry.from_dict(data)
@@ -124,19 +125,19 @@ class TestSecretVault:
     def test_expiration(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             vault = create_vault(Path(tmpdir) / "test.vault", "test-password")
-            future = datetime.now(timezone.utc) + timedelta(hours=1)
+            future = datetime.now(UTC) + timedelta(hours=1)
             vault.set("key1", "value1", expires_at=future)
             assert vault.get("key1") is not None
 
-            past = datetime.now(timezone.utc) - timedelta(hours=1)
+            past = datetime.now(UTC) - timedelta(hours=1)
             vault.set("key2", "value2", expires_at=past)
             assert vault.get("key2") is None
 
     def test_cleanup_expired(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             vault = create_vault(Path(tmpdir) / "test.vault", "test-password")
-            past = datetime.now(timezone.utc) - timedelta(hours=1)
-            future = datetime.now(timezone.utc) + timedelta(hours=1)
+            past = datetime.now(UTC) - timedelta(hours=1)
+            future = datetime.now(UTC) + timedelta(hours=1)
 
             vault.set("expired1", "v1", expires_at=past)
             vault.set("expired2", "v2", expires_at=past)

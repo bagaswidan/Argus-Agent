@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 import secrets
 import threading
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from types import TracebackType
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -26,9 +25,9 @@ class VaultConfig:
     """Configuration for SecretVault."""
 
     vault_path: Path
-    master_key: Optional[bytes] = None  # If None, derived from password
-    password: Optional[str] = None  # Used to derive master_key if not provided
-    salt: Optional[bytes] = None  # If None, generated on first init
+    master_key: bytes | None = None  # If None, derived from password
+    password: str | None = None  # Used to derive master_key if not provided
+    salt: bytes | None = None  # If None, generated on first init
     iterations: int = 100_000  # PBKDF2 iterations
     auto_save: bool = True  # Auto-save on every change
 
@@ -41,14 +40,14 @@ class SecretEntry:
     value: str
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -62,7 +61,7 @@ class SecretEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SecretEntry":
+    def from_dict(cls, data: dict[str, Any]) -> SecretEntry:
         return cls(
             key=data["key"],
             value=data["value"],
@@ -80,7 +79,7 @@ class SecretVault:
     def __init__(self, config: VaultConfig):
         self.config = config
         self._lock = threading.RLock()
-        self._fernet: Optional[Fernet] = None
+        self._fernet: Fernet | None = None
         self._secrets: dict[str, SecretEntry] = {}
         self._dirty = False
         self._init_vault()
@@ -90,10 +89,9 @@ class SecretVault:
         # If vault exists, load salt from file first
         if self.config.vault_path.exists():
             self._load_salt_from_vault()
-        else:
-            # Generate new salt for new vault
-            if self.config.salt is None:
-                self.config.salt = secrets.token_bytes(16)
+        # Generate new salt for new vault
+        elif self.config.salt is None:
+            self.config.salt = secrets.token_bytes(16)
 
         # Derive master key
         if self.config.master_key is None:
@@ -121,7 +119,7 @@ class SecretVault:
                     self.config.salt = f.read(salt_len)
                 else:
                     raise ValueError("Invalid vault format: missing salt")
-                
+
                 self.config.iterations = int.from_bytes(f.read(4), "big")
         except Exception:
             # If we can't read salt, generate new (will fail to decrypt existing vault)
@@ -131,10 +129,13 @@ class SecretVault:
 
     def _derive_key(self, password: str) -> bytes:
         """Derive encryption key from password using PBKDF2."""
+        salt = self.config.salt
+        if salt is None:
+            raise ValueError("Vault salt is not initialized")
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=self.config.salt,
+            salt=salt,
             iterations=self.config.iterations,
         )
         return kdf.derive(password.encode())
@@ -153,6 +154,8 @@ class SecretVault:
             return
 
         try:
+            if self._fernet is None:
+                raise RuntimeError("Vault is not initialized")
             decrypted = self._fernet.decrypt(encrypted_data)
             data = json.loads(decrypted.decode())
             self._secrets = {
@@ -163,12 +166,18 @@ class SecretVault:
 
     def _save_vault(self) -> None:
         """Encrypt and save vault to disk."""
+        salt = self.config.salt
+        if salt is None:
+            raise ValueError("Vault salt is not initialized")
+        if self._fernet is None:
+            raise RuntimeError("Vault is not initialized")
+
         data = {
             "version": 1,
-            "salt": base64.b64encode(self.config.salt).decode(),
+            "salt": base64.b64encode(salt).decode(),
             "iterations": self.config.iterations,
             "secrets": {k: v.to_dict() for k, v in self._secrets.items()},
-            "saved_at": datetime.now(timezone.utc).isoformat(),
+            "saved_at": datetime.now(UTC).isoformat(),
         }
 
         json_data = json.dumps(data).encode()
@@ -178,8 +187,8 @@ class SecretVault:
         tmp_path = self.config.vault_path.with_suffix(".tmp")
         with open(tmp_path, "wb") as f:
             # Write salt length (1 byte) + salt
-            f.write(len(self.config.salt).to_bytes(1, "big"))
-            f.write(self.config.salt)
+            f.write(len(salt).to_bytes(1, "big"))
+            f.write(salt)
             # Write iterations (4 bytes, big-endian)
             f.write(self.config.iterations.to_bytes(4, "big"))
             # Write encrypted data
@@ -190,13 +199,13 @@ class SecretVault:
         self,
         key: str,
         value: str,
-        metadata: Optional[dict[str, Any]] = None,
-        tags: Optional[list[str]] = None,
-        expires_at: Optional[datetime] = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        expires_at: datetime | None = None,
     ) -> SecretEntry:
         """Store a secret."""
         with self._lock:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             old = self._secrets.get(key)
             created_at = old.created_at if old else now
             entry = SecretEntry(
@@ -214,7 +223,7 @@ class SecretVault:
                 self._save_vault()
             return entry
 
-    def get(self, key: str) -> Optional[SecretEntry]:
+    def get(self, key: str) -> SecretEntry | None:
         """Retrieve a secret."""
         with self._lock:
             entry = self._secrets.get(key)
@@ -223,7 +232,7 @@ class SecretVault:
                 return None
             return entry
 
-    def get_value(self, key: str) -> Optional[str]:
+    def get_value(self, key: str) -> str | None:
         """Get just the secret value."""
         entry = self.get(key)
         return entry.value if entry else None
@@ -239,7 +248,7 @@ class SecretVault:
                 return True
             return False
 
-    def list_keys(self, tag_filter: Optional[list[str]] = None) -> list[str]:
+    def list_keys(self, tag_filter: list[str] | None = None) -> list[str]:
         """List all secret keys, optionally filtered by tags."""
         with self._lock:
             keys = []
@@ -253,7 +262,7 @@ class SecretVault:
                     keys.append(key)
             return sorted(keys)
 
-    def list_entries(self, tag_filter: Optional[list[str]] = None) -> list[SecretEntry]:
+    def list_entries(self, tag_filter: list[str] | None = None) -> list[SecretEntry]:
         """List all secret entries, optionally filtered by tags."""
         with self._lock:
             entries = []
@@ -274,7 +283,7 @@ class SecretVault:
             if not entry:
                 return False
             entry.metadata.update(metadata)
-            entry.updated_at = datetime.now(timezone.utc)
+            entry.updated_at = datetime.now(UTC)
             self._dirty = True
             if self.config.auto_save:
                 self._save_vault()
@@ -289,7 +298,7 @@ class SecretVault:
             for tag in tags:
                 if tag not in entry.tags:
                     entry.tags.append(tag)
-            entry.updated_at = datetime.now(timezone.utc)
+            entry.updated_at = datetime.now(UTC)
             self._dirty = True
             if self.config.auto_save:
                 self._save_vault()
@@ -304,7 +313,7 @@ class SecretVault:
             for tag in tags:
                 if tag in entry.tags:
                     entry.tags.remove(tag)
-            entry.updated_at = datetime.now(timezone.utc)
+            entry.updated_at = datetime.now(UTC)
             self._dirty = True
             if self.config.auto_save:
                 self._save_vault()
@@ -356,7 +365,7 @@ class SecretVault:
 
             return {k: v.value for k, v in self._secrets.items() if not v.is_expired()}
 
-    def import_plaintext(self, secrets: dict[str, str], metadata: Optional[dict[str, dict]] = None) -> int:
+    def import_plaintext(self, secrets: dict[str, str], metadata: dict[str, dict] | None = None) -> int:
         """Import secrets from plaintext dict."""
         meta = metadata or {}
         count = 0
@@ -372,17 +381,22 @@ class SecretVault:
             if self._dirty and self.config.auto_save:
                 self._save_vault()
 
-    def __enter__(self) -> "SecretVault":
+    def __enter__(self) -> SecretVault:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
 
 def create_vault(
     vault_path: Path | str,
     password: str,
-    salt: Optional[bytes] = None,
+    salt: bytes | None = None,
 ) -> SecretVault:
     """Factory function to create a SecretVault."""
     config = VaultConfig(

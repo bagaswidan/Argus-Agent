@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Any, Optional
 
 from argus.observability.store import ObservabilityStore, create_obs_store
@@ -116,7 +117,7 @@ def _traces_table(traces: list[dict[str, Any]]) -> str:
         rows.append(
             f"<tr><td>{t.get('trace_id','')[:12]}</td><td>{t.get('name','')}</td>"
             f"<td><span class='status {status_cls}'>{t.get('status','')}</span></td>"
-            f"<td>{t.get('duration_ms',0):.1f}ms</td><td>{t.get('span_count',0)}</td></tr>"
+            f"<td>{t.get('duration_ms',0):.1f}ms</td><td>{t.get('span_count',0)}</td></tr>",
         )
     return (
         "<table><tr><th>Trace</th><th>Name</th><th>Status</th><th>Duration</th><th>Spans</th></tr>"
@@ -136,7 +137,7 @@ def _logs_table(logs: list[dict[str, Any]]) -> str:
         msg = str(log.get("message", ""))[:90]
         rows.append(
             f"<tr><td>{ts}</td><td><span class='status {cls}'>{level}</span></td>"
-            f"<td>{log.get('logger','')}</td><td>{msg}</td></tr>"
+            f"<td>{log.get('logger','')}</td><td>{msg}</td></tr>",
         )
     return (
         "<table><tr><th>Time</th><th>Level</th><th>Logger</th><th>Message</th></tr>"
@@ -151,7 +152,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     store: ObservabilityStore = None  # type: ignore[assignment]
     version: str = ""
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         if self.path not in ("/", "/index.html"):
             self.send_response(404)
             self.end_headers()
@@ -163,7 +164,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         pass  # keep console quiet
 
 
@@ -213,7 +214,7 @@ def run_dashboard_in_thread(
     return server, t
 
 
-def create_dashboard_store(path: Optional[str] = None) -> ObservabilityStore:
+def create_dashboard_store(path: str | None = None) -> ObservabilityStore:
     """Convenience factory; defaults to a tempfile path (cross-platform)."""
     import tempfile
     path = path or str(Path(tempfile.gettempdir()) / "argus_dashboard.db")

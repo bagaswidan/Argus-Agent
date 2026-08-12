@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import time
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -23,9 +23,9 @@ class MemoryEntry:
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    embedding: Optional[list[float]] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    embedding: list[float] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,7 +106,7 @@ class MemoryStore:
     def __init__(self, db_path: Path | str):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._init_db()
 
     def _init_db(self) -> None:
@@ -115,7 +115,7 @@ class MemoryStore:
             conn.executescript(SCHEMA_SQL)
 
     @contextmanager
-    def _get_conn(self):
+    def _get_conn(self) -> Iterator[sqlite3.Connection]:
         """Get database connection with row factory."""
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -131,13 +131,13 @@ class MemoryStore:
     def add(
         self,
         content: str,
-        metadata: Optional[dict[str, Any]] = None,
-        tags: Optional[list[str]] = None,
-        embedding: Optional[list[float]] = None,
-        id: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        embedding: list[float] | None = None,
+        id: str | None = None,
     ) -> MemoryEntry:
         """Add a new memory entry."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         entry_id = id or str(uuid.uuid4())
 
         entry = MemoryEntry(
@@ -169,11 +169,11 @@ class MemoryStore:
 
         return entry
 
-    def get(self, id: str) -> Optional[MemoryEntry]:
+    def get(self, id: str) -> MemoryEntry | None:
         """Get a memory entry by ID."""
         with self._get_conn() as conn:
             row = conn.execute(
-                "SELECT * FROM memories WHERE id = ?", (id,)
+                "SELECT * FROM memories WHERE id = ?", (id,),
             ).fetchone()
             if row:
                 return self._row_to_entry(row)
@@ -182,11 +182,11 @@ class MemoryStore:
     def update(
         self,
         id: str,
-        content: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
-        tags: Optional[list[str]] = None,
-        embedding: Optional[list[float]] = None,
-    ) -> Optional[MemoryEntry]:
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        embedding: list[float] | None = None,
+    ) -> MemoryEntry | None:
         """Update a memory entry."""
         entry = self.get(id)
         if not entry:
@@ -201,7 +201,7 @@ class MemoryStore:
         if embedding is not None:
             entry.embedding = embedding
 
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
 
         with self._get_conn() as conn:
             conn.execute(
@@ -226,14 +226,14 @@ class MemoryStore:
         """Delete a memory entry."""
         with self._get_conn() as conn:
             cursor = conn.execute("DELETE FROM memories WHERE id = ?", (id,))
-            return cursor.rowcount > 0
+            return bool(cursor.rowcount > 0)
 
     def search_fts(
         self,
         query: str,
         limit: int = 10,
-        metadata_filter: Optional[dict[str, Any]] = None,
-        tag_filter: Optional[list[str]] = None,
+        metadata_filter: dict[str, Any] | None = None,
+        tag_filter: list[str] | None = None,
     ) -> list[SearchResult]:
         """Full-text search using FTS5."""
         # Build FTS5 query: tokenize into terms with prefix matching (term*)
@@ -301,12 +301,12 @@ class MemoryStore:
         self,
         query_embedding: list[float],
         limit: int = 10,
-        metadata_filter: Optional[dict[str, Any]] = None,
+        metadata_filter: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
         """Vector similarity search (cosine similarity)."""
         with self._get_conn() as conn:
             rows = conn.execute(
-                "SELECT * FROM memories WHERE embedding IS NOT NULL"
+                "SELECT * FROM memories WHERE embedding IS NOT NULL",
             ).fetchall()
 
         if not rows:
@@ -347,10 +347,10 @@ class MemoryStore:
     def search_hybrid(
         self,
         query: str,
-        query_embedding: Optional[list[float]] = None,
+        query_embedding: list[float] | None = None,
         limit: int = 10,
-        metadata_filter: Optional[dict[str, Any]] = None,
-        tag_filter: Optional[list[str]] = None,
+        metadata_filter: dict[str, Any] | None = None,
+        tag_filter: list[str] | None = None,
         fts_weight: float = 0.5,
         vector_weight: float = 0.5,
     ) -> list[SearchResult]:
@@ -366,14 +366,14 @@ class MemoryStore:
         combined = {}
         for r in fts_results:
             combined[r.entry.id] = SearchResult(
-                entry=r.entry, score=r.score * fts_weight, match_type="hybrid"
+                entry=r.entry, score=r.score * fts_weight, match_type="hybrid",
             )
         for r in vector_results:
             if r.entry.id in combined:
                 combined[r.entry.id].score += r.score * vector_weight
             else:
                 combined[r.entry.id] = SearchResult(
-                    entry=r.entry, score=r.score * vector_weight, match_type="hybrid"
+                    entry=r.entry, score=r.score * vector_weight, match_type="hybrid",
                 )
 
         sorted_results = sorted(combined.values(), key=lambda r: r.score, reverse=True)
@@ -391,7 +391,8 @@ class MemoryStore:
     def count(self) -> int:
         """Get total memory count."""
         with self._get_conn() as conn:
-            return conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+            row = conn.execute("SELECT COUNT(*) FROM memories").fetchone()
+            return int(row[0]) if row is not None else 0
 
     def _row_to_entry(self, row: sqlite3.Row) -> MemoryEntry:
         return MemoryEntry(

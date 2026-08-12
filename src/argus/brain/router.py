@@ -8,8 +8,8 @@ Ordering contract:
 """
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class ModelRouter:
             attempt=1,
             total_candidates=len(candidates),
             overrides=tuple(
-                [explicit_override] if explicit_override and chosen else []
+                [explicit_override] if explicit_override and chosen else [],
             ),
             available_providers=self.providers,
             available_models=tuple(sorted({c.model_id for c in candidates})),
@@ -71,7 +71,7 @@ class ModelRouter:
             # For explicit override, use explicit_provider or first provider
             provider_for_override = self.explicit_provider or self.providers[0]
             ordered.append(
-                ModelCandidate(provider_id=provider_for_override, model_id=explicit_override)
+                ModelCandidate(provider_id=provider_for_override, model_id=explicit_override),
             )
         # Default model for each provider
         for provider in self.providers:
