@@ -461,6 +461,8 @@ print(json.dumps({{
             logger.warning(f"Failed to write audit log: {e}")
 
     def _write_audit_entry(self, entry: AuditEntry) -> None:
+        if not self.audit_log_path:
+            return
         self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.audit_log_path, "a") as f:
             f.write(json.dumps(entry.to_dict()) + "\n")

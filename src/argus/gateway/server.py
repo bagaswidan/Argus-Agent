@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     type WebTCPSite = Any
     type WebRequest = Any
     type WebResponse = Any
-    type WebMiddleware = Any
+    WebMiddleware: Any  # type: ignore[valid-type]
     AIOHTTP_AVAILABLE = True
 else:
     try:
