@@ -18,10 +18,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
-from types import TracebackType
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 log = logging.getLogger("argus.events")
 

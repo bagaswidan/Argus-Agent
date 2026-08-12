@@ -9,11 +9,11 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class WorkflowState(str, Enum):
+class WorkflowState(StrEnum):
     CREATED = "created"
     QUEUED = "queued"
     RUNNING = "running"

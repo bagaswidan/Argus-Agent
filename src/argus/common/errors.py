@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Standard error codes."""
 
     CONFIGURATION_ERROR = "CONFIGURATION_ERROR"

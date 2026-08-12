@@ -5,24 +5,26 @@ HTTP server for the gateway with REST API, WebSocket support, and adapter integr
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     # aiohttp is an optional runtime dependency. When it is not installed
     # (e.g. in CI) we fall back to `object` stubs at runtime and type the
     # aliases as `Any` so type checking still passes.
+    from collections.abc import Awaitable, Callable
+
     web: Any
-    WebApplication: TypeAlias = Any
-    WebAppRunner: TypeAlias = Any
-    WebTCPSite: TypeAlias = Any
-    WebRequest: TypeAlias = Any
-    WebResponse: TypeAlias = Any
-    WebMiddleware: TypeAlias = Any
+    type WebApplication = Any
+    type WebAppRunner = Any
+    type WebTCPSite = Any
+    type WebRequest = Any
+    type WebResponse = Any
+    type WebMiddleware = Any
     AIOHTTP_AVAILABLE = True
 else:
     try:
@@ -42,7 +44,11 @@ else:
         WebTCPSite = object
         WebRequest = object
         WebResponse = object
-        WebMiddleware = lambda f: f  # no-op decorator when aiohttp not available
+
+        def web_middleware(f: Any) -> Any:
+            return f  # no-op decorator when aiohttp not available
+
+        WebMiddleware = web_middleware
 
 from argus.gateway.adapters import (
     PlatformAdapter,
@@ -156,10 +162,8 @@ class GatewayServer:
         async with self._adapters_lock:
             if platform_type in self._adapters:
                 # Another adapter already registered concurrently.
-                try:
+                with contextlib.suppress(Exception):
                     await adapter.disconnect()
-                except Exception:
-                    pass
                 return False
             self._adapters[platform_type] = adapter
 
@@ -223,15 +227,13 @@ class GatewayServer:
     async def _handle_message(self, request: WebRequest) -> WebResponse:
         # Auth check
         auth_header = request.headers.get("Authorization", "")
+        token_data = None
         if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
-            token_data = self.auth.verify_token(token)
-            if not token_data:
-                return web.json_response({"error": "Invalid token"}, status=401)
+            token_data = self.auth.verify_token(auth_header[7:])
         elif not self.config.auth:  # No auth configured, allow
             token_data = TokenData(sub="anonymous", scopes=["*"])
-        else:
-            return web.json_response({"error": "Missing authorization"}, status=401)
+        if token_data is None:
+            return web.json_response({"error": "Invalid or missing authorization"}, status=401)
 
         try:
             data = await request.json()
@@ -240,9 +242,11 @@ class GatewayServer:
 
         # Validate required fields
         required = ["platform", "chat_id", "text"]
-        for field in required:
-            if field not in data:
-                return web.json_response({"error": f"Missing field: {field}"}, status=400)
+        for required_field in required:
+            if required_field not in data:
+                return web.json_response(
+                    {"error": f"Missing field: {required_field}"}, status=400,
+                )
 
         try:
             platform = PlatformType(data["platform"])

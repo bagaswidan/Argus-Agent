@@ -7,12 +7,14 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass
@@ -238,10 +240,7 @@ class MemoryStore:
         """Full-text search using FTS5."""
         # Build FTS5 query: tokenize into terms with prefix matching (term*)
         terms = [t for t in query.split() if t]
-        if terms:
-            fts_query = " AND ".join(f'"{t}"*' for t in terms)
-        else:
-            fts_query = query
+        fts_query = " AND ".join(f'"{t}"*' for t in terms) if terms else query
 
         needs_python_filter = bool(metadata_filter or tag_filter)
 
@@ -285,9 +284,8 @@ class MemoryStore:
                     continue
 
             # Apply tag filter
-            if tag_filter:
-                if not all(tag in entry.tags for tag in tag_filter):
-                    continue
+            if tag_filter and not all(tag in entry.tags for tag in tag_filter):
+                continue
 
             # Convert bm25 rank to a positive score where more negative
             # rank (better match) gives a larger positive score.
@@ -331,11 +329,10 @@ class MemoryStore:
                 continue
 
             # Apply metadata filter
-            if metadata_filter:
-                if not all(
-                    entry.metadata.get(k) == v for k, v in metadata_filter.items()
-                ):
-                    continue
+            if metadata_filter and not all(
+                entry.metadata.get(k) == v for k, v in metadata_filter.items()
+            ):
+                continue
 
             score = cosine_sim(query_embedding, entry.embedding)
             results.append(SearchResult(entry=entry, score=score, match_type="vector"))

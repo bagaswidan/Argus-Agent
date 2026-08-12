@@ -97,7 +97,7 @@ class AuthManager:
             "iat": now,
             "exp": exp,
         }
-        return cast(str, jwt.encode(claims, self.secret_key, algorithm=self.algorithm))
+        return cast("str", jwt.encode(claims, self.secret_key, algorithm=self.algorithm))
 
     def verify_token(self, token: str) -> TokenData | None:
         """Verify and decode a token."""

@@ -7,11 +7,11 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"

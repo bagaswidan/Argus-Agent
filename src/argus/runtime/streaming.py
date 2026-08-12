@@ -9,12 +9,14 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
 
-class StreamCancelled(Exception):
+class StreamCancelledError(Exception):
     """Raised inside the producer when the consumer cancels the stream."""
 
 
@@ -84,11 +86,11 @@ class StreamingManager:
         cancel_event = asyncio.Event()
         self._events[sid] = cancel_event
 
-        start = time.time()
+        time.time()
 
         async def emit(text: str) -> None:
             if cancel_event.is_set():
-                raise StreamCancelled(f"stream {sid} cancelled")
+                raise StreamCancelledError(f"stream {sid} cancelled")
             seq = self._next_seq[sid]
             self._next_seq[sid] += 1
             await queue.put(StreamChunk(stream_id=sid, data=text, sequence=seq))

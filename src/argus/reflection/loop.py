@@ -5,12 +5,14 @@ Agent revises → Repeat until passes or max iterations.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from argus.reflection.critic import Critic, CritiqueConfig, CritiqueResult, CritiqueSeverity
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass

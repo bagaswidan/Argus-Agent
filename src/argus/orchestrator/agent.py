@@ -5,13 +5,15 @@ Defines agent roles, capabilities, and lifecycle states.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+if TYPE_CHECKING:
+    from datetime import datetime
 
-class AgentRole(str, Enum):
+
+class AgentRole(StrEnum):
     """Role of an agent in the orchestration."""
 
     ORCHESTRATOR = "orchestrator"  # Plans, delegates, coordinates
@@ -21,7 +23,7 @@ class AgentRole(str, Enum):
     AGGREGATOR = "aggregator"  # Combines results from multiple agents
 
 
-class AgentState(str, Enum):
+class AgentState(StrEnum):
     """Lifecycle state of an agent."""
 
     IDLE = "idle"

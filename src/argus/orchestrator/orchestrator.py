@@ -9,13 +9,15 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from argus.capability.engine import CapabilityEngine, CapabilityRegistry
 from argus.orchestrator.agent import AgentInstance, AgentSpec, AgentState
 from argus.orchestrator.communication import MessageBus, get_message_bus
-from argus.runtime.sandbox import Sandbox
+
+if TYPE_CHECKING:
+    from argus.capability.engine import CapabilityEngine, CapabilityRegistry
+    from argus.runtime.sandbox import Sandbox
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,7 @@ class MultiAgentOrchestrator:
 
         self._agents: dict[str, AgentInstance] = {}
         self._tasks: dict[str, OrchestrationTask] = {}
+        self._task_events: dict[str, asyncio.Event] = {}
         self._running = False
 
     async def create_plan(
@@ -112,7 +115,7 @@ class MultiAgentOrchestrator:
         agent_specs: list[AgentSpec],
     ) -> OrchestrationPlan:
         """Create an execution plan from goal and agent specs.
-        
+
         In a full implementation, this would use an LLM to decompose the goal
         into tasks and assign them to agents. For now, we create a simple
         sequential plan where each agent gets one task.
@@ -149,6 +152,9 @@ class MultiAgentOrchestrator:
         for agent_id in self._agents:
             agent_queues[agent_id] = await self.message_bus.subscribe(agent_id)
 
+        # One completion event per task; dependents wait on it instead of polling.
+        self._task_events = {task.id: asyncio.Event() for task in plan.tasks}
+
         try:
             self._running = True
 
@@ -158,8 +164,7 @@ class MultiAgentOrchestrator:
                 deps_ok = True
                 for dep_id in task.dependencies:
                     dep_task = self._tasks[dep_id]
-                    while dep_task.status not in ("completed", "failed"):
-                        await asyncio.sleep(0.1)
+                    await self._task_events[dep_id].wait()
                     if dep_task.status != "completed":
                         task.status = "failed"
                         task.error = (
@@ -168,6 +173,7 @@ class MultiAgentOrchestrator:
                         )
                         errors[task.assigned_agent] = task.error
                         deps_ok = False
+                        self._task_events[task.id].set()
                         break
 
                 # If any dependency failed, skip this task
@@ -180,6 +186,7 @@ class MultiAgentOrchestrator:
                     task.status = "failed"
                     task.error = f"Agent {task.assigned_agent} not found"
                     errors[task.assigned_agent] = task.error
+                    self._task_events[task.id].set()
                     continue
 
                 await self._execute_task(agent, task)
@@ -253,11 +260,12 @@ class MultiAgentOrchestrator:
             task.error = str(e)
             agent.error = str(e)
             agent.state = AgentState.FAILED
-            logger.error(f"Task {task.id} failed: {e}")
+            logger.exception(f"Task {task.id} failed: {e}")
 
         finally:
             task.completed_at = datetime.now(UTC)
             agent.completed_at = task.completed_at
+            self._task_events[task.id].set()
 
     def get_agent(self, agent_id: str) -> AgentInstance | None:
         return self._agents.get(agent_id)

@@ -5,11 +5,14 @@ Every recorded decision is stored in an in-memory DecisionMemory.
 """
 from __future__ import annotations
 
+import math
 import uuid
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass
@@ -44,7 +47,7 @@ class DecisionMemory:
 class DecisionEngine:
     """Scores candidates and records decisions."""
 
-    _INVERTED_FACTORS = {"cost", "risk", "latency"}
+    _INVERTED_FACTORS: ClassVar[frozenset[str]] = frozenset({"cost", "risk", "latency"})
 
     def __init__(
         self,
@@ -85,8 +88,8 @@ class DecisionEngine:
                     f"Score for factor '{factor}' must be a number, "
                     f"got {type(raw).__name__}: {raw!r}",
                 )
-            # Detect NaN (the only value where value != value).
-            if raw != raw:
+            # Detect NaN, which is never equal to itself.
+            if math.isnan(raw):
                 raise ValueError(f"Score for factor '{factor}' is NaN")
             if not (0.0 <= raw <= 1.0):
                 raise ValueError(
@@ -99,10 +102,7 @@ class DecisionEngine:
         weighted = 0.0
         for factor, weight in self.weights.items():
             raw = normalized[factor]
-            if factor in self._INVERTED_FACTORS:
-                good = 1.0 - raw
-            else:
-                good = raw
+            good = 1.0 - raw if factor in self._INVERTED_FACTORS else raw
             weighted += weight * good
 
         confidence = weighted / total_weight if total_weight else 0.0

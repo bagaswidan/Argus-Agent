@@ -64,7 +64,7 @@ class UsageTracker:
             for item in data.get("records", []):
                 rec = UsageRecord(**item)
                 self._records[rec.name] = rec
-            self._lessons = [Lesson(**l) for l in data.get("lessons", [])]
+            self._lessons = [Lesson(**lesson) for lesson in data.get("lessons", [])]
         except Exception:
             # Corrupt sidecar: start fresh rather than crash the agent.
             self._records = {}
@@ -73,7 +73,7 @@ class UsageTracker:
     def _save(self) -> None:
         payload = {
             "records": [asdict(r) for r in self._records.values()],
-            "lessons": [asdict(l) for l in self._lessons],
+            "lessons": [asdict(lesson) for lesson in self._lessons],
         }
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(payload, indent=2, default=str))
@@ -100,8 +100,7 @@ class UsageTracker:
 
     def get(self, name: str) -> UsageRecord | None:
         with self._lock:
-            rec = self._records.get(name)
-            return rec
+            return self._records.get(name)
 
     def all(self) -> list[UsageRecord]:
         with self._lock:

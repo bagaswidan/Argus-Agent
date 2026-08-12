@@ -7,11 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 from argus.common.errors import ArgusError
 from argus.common.events import Event, EventBus, EventPriority
@@ -24,10 +23,13 @@ from argus.runtime.sandbox import (
     SandboxMode,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 logger = get_logger(__name__)
 
 
-class RetryPolicy(str, Enum):
+class RetryPolicy(StrEnum):
     """Retry policy for capability execution."""
 
     NONE = "none"
@@ -126,6 +128,7 @@ class CapabilityRegistry:
         self._capabilities: dict[str, CapabilitySpec] = {}
         self._implementations: dict[str, Callable] = {}
         self._policies: dict[str, ExecutionPolicy] = {}
+        self._tasks: set[asyncio.Task] = set()
         self.event_bus = event_bus
 
     def register(
@@ -153,7 +156,7 @@ class CapabilityRegistry:
                 # "no current event loop" errors during registration.
                 pass
             else:
-                asyncio.create_task(
+                task = asyncio.create_task(
                     self.event_bus.publish(
                         Event(
                             type="capability.registered",
@@ -162,6 +165,8 @@ class CapabilityRegistry:
                         ),
                     ),
                 )
+                self._tasks.add(task)
+                task.add_done_callback(self._tasks.discard)
 
     def get_spec(self, name: str) -> CapabilitySpec | None:
         return self._capabilities.get(name)

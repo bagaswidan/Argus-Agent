@@ -9,11 +9,13 @@ import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from argus.observability.logs import LogEntry, LogLevel
 from argus.observability.metrics import Metric, MetricType
-from argus.observability.traces import Trace
+
+if TYPE_CHECKING:
+    from argus.observability.logs import LogEntry, LogLevel
+    from argus.observability.traces import Trace
 
 
 class ObservabilityStore:

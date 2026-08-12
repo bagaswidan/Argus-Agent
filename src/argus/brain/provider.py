@@ -6,6 +6,7 @@ SSE streaming, so we always send ``stream: false`` explicitly.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
@@ -111,10 +112,8 @@ class OmniRouteProvider:
             )
         except urllib.error.HTTPError as e:
             detail = ""
-            try:
+            with contextlib.suppress(Exception):
                 detail = e.read().decode()[:300]
-            except Exception:
-                pass
             return ChatResponse(
                 content="", model=model or self.model, provider_id="omniroute",
                 error=f"HTTP {e.code}: {detail}",

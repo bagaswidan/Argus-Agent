@@ -8,9 +8,11 @@ Lightweight dependency injection container with three lifetimes:
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
 from enum import Enum
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 T = TypeVar("T")
 
@@ -76,7 +78,7 @@ class Container:
     def register_instance(self, service_type: type[T], instance: T) -> None:
         """Register a pre-created instance as singleton."""
         with self._lock:
-            desc = ServiceDescriptor(service_type, lambda c: instance, ServiceLifetime.SINGLETON)
+            desc = ServiceDescriptor(service_type, lambda _: instance, ServiceLifetime.SINGLETON)
             desc.instance = instance
             self._services[service_type] = desc
 
@@ -116,15 +118,15 @@ class Container:
             if desc.lifetime == ServiceLifetime.SINGLETON:
                 if desc.instance is None:
                     desc.instance = desc.factory(self)
-                return cast(T, desc.instance)
+                return cast("T", desc.instance)
 
             if desc.lifetime == ServiceLifetime.SCOPED:
                 if desc.service_type not in self._scoped_instances:
                     self._scoped_instances[desc.service_type] = desc.factory(self)
-                return cast(T, self._scoped_instances[desc.service_type])
+                return cast("T", self._scoped_instances[desc.service_type])
 
             # TRANSIENT
-            return cast(T, desc.factory(self))
+            return cast("T", desc.factory(self))
         finally:
             self._resolving.discard(service_type)
 
@@ -168,26 +170,26 @@ def get_global_container() -> Container:
     return _global_container
 
 
-def resolve(service_type: type[T]) -> T:
+def resolve[T](service_type: type[T]) -> T:
     """Resolve from global container."""
     return _global_container.resolve(service_type)
 
 
-def register_singleton(service_type: type[T], factory: Callable[..., T]) -> None:
+def register_singleton[T](service_type: type[T], factory: Callable[..., T]) -> None:
     """Register singleton in global container."""
     _global_container.register_singleton(service_type, factory)
 
 
-def register_transient(service_type: type[T], factory: Callable[..., T]) -> None:
+def register_transient[T](service_type: type[T], factory: Callable[..., T]) -> None:
     """Register transient in global container."""
     _global_container.register_transient(service_type, factory)
 
 
-def register_scoped(service_type: type[T], factory: Callable[..., T]) -> None:
+def register_scoped[T](service_type: type[T], factory: Callable[..., T]) -> None:
     """Register scoped in global container."""
     _global_container.register_scoped(service_type, factory)
 
 
-def register_instance(service_type: type[T], instance: T) -> None:
+def register_instance[T](service_type: type[T], instance: T) -> None:
     """Register instance in global container."""
     _global_container.register_instance(service_type, instance)

@@ -27,9 +27,9 @@ class Permission:
         from fnmatch import fnmatch
 
         return (
-            (self.subject == subject or self.subject == "*" or fnmatch(subject, self.subject))
-            and (self.resource == resource or self.resource == "*" or fnmatch(resource, self.resource))
-            and (self.action == action or self.action == "*" or fnmatch(action, self.action))
+            (self.subject in (subject, "*") or fnmatch(subject, self.subject))
+            and (self.resource in (resource, "*") or fnmatch(resource, self.resource))
+            and (self.action in (action, "*") or fnmatch(action, self.action))
         )
 
 

@@ -10,7 +10,7 @@ import asyncio
 import inspect
 from collections.abc import Callable
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from argus.common.errors import ArgusError
@@ -21,7 +21,7 @@ logger = get_logger("argus.common.lifecycle")
 type Hook = Callable[..., Any]
 
 
-class LifecycleState(str, Enum):
+class LifecycleState(StrEnum):
     """Lifecycle state of an Argus component."""
 
     CREATED = "created"
@@ -197,7 +197,7 @@ class LifecycleManager:
                 cause=exc,
             )
             self._last_error = error
-            logger.error("lifecycle.hook_timeout", name=self._name, hook=self._current_hook)
+            logger.exception("lifecycle.hook_timeout", name=self._name, hook=self._current_hook)
             raise error from exc
         except Exception as exc:
             error = LifecycleError(
@@ -207,7 +207,7 @@ class LifecycleManager:
                 cause=exc,
             )
             self._last_error = error
-            logger.error(
+            logger.exception(
                 "lifecycle.hook_failed", name=self._name, hook=self._current_hook, error=str(exc),
             )
             raise error from exc

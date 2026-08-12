@@ -5,12 +5,15 @@ Provides snapshots for the dashboard and health checks.
 """
 from __future__ import annotations
 
+import contextlib
 import threading
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -99,10 +102,8 @@ class RuntimeMonitor:
 
     def _notify(self, task: TaskStatus) -> None:
         for hook in self._hooks:
-            try:
+            with contextlib.suppress(Exception):
                 hook(task)
-            except Exception:
-                pass
 
 
 def create_runtime_monitor(max_history: int = 500) -> RuntimeMonitor:

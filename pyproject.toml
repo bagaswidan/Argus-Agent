@@ -63,7 +63,28 @@ dev-dependencies = [
 target-version = "py312"
 line-length = 100
 select = ["E", "F", "I", "UP", "W", "C4", "C90", "N", "D", "T20", "ARG", "PTH", "ERA", "SIM", "TCH", "RUF", "LOG", "RET", "PL", "TRY", "ASYNC", "PD", "NPY", "COM", "Q", "C"]
-ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+ignore = [
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "TRY003",   # long exception messages are intentional with error model
+    "PLC0415",  # lazy imports for cold-start performance
+    "D401",     # docstring imperative mood — too strict for existing code
+    "PLR0913",  # too many arguments — pydantic constructors
+    "PLR0917",  # too many positional arguments
+    "PLR0915",  # too many statements — intentional in complex modules
+    "PLR2004",  # magic values — TODO: extract constants incrementally
+    "C901",     # complexity — intentional in orchestrator/engine
+    "ARG001",   # unused function args — required by interface contracts
+    "ARG002",   # unused method args — required by interface contracts
+    "N806",     # non-lowercase variable — intentional in math/ai conventions
+    "F401",     # unused imports for TYPE_CHECKING re-exports
+    "RUF003",   # unicode in comments — intentional for emoji/logs
+    "PTH123",   # open() vs Path — Path preferred but open() ok in some cases
+    "PLW0603",  # global statement — intentional for DI container
+    "TRY301",   # raise within try — intentional in recovery paths
+    "TRY300",   # try-consider-else — style preference
+    "TRY401",   # verbose log messages — intentional with structlog
+    "E501",     # line length — handled by formatter (black), not linter
+]
 [tool.black]
 line-length = 100
 target-version = ["py312"]

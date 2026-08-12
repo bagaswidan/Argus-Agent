@@ -9,11 +9,11 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class TransactionStatus(str, Enum):
+class TransactionStatus(StrEnum):
     ACTIVE = "active"
     CHECKPOINTED = "checkpointed"
     COMMITTED = "committed"
@@ -21,7 +21,7 @@ class TransactionStatus(str, Enum):
     FAILED = "failed"
 
 
-class RecoveryStrategy(str, Enum):
+class RecoveryStrategy(StrEnum):
     RETRY = "retry"
     RESUME = "resume"
     FALLBACK = "fallback"

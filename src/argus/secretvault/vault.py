@@ -12,12 +12,14 @@ import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 @dataclass
@@ -335,7 +337,7 @@ class SecretVault:
         """Rotate the master encryption key."""
         with self._lock:
             # Decrypt all secrets with current key
-            plaintext_secrets = {k: v.value for k, v in self._secrets.items()}
+            {k: v.value for k, v in self._secrets.items()}
 
             # Derive new key
             new_salt = secrets.token_bytes(16)

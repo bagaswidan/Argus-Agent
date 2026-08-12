@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import logging
 import sys
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import structlog
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -21,7 +21,7 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class LogFormat(str, Enum):
+class LogFormat(StrEnum):
     JSON = "json"
     CONSOLE = "console"
 
@@ -65,7 +65,7 @@ def configure_logging(
         renderer = structlog.dev.ConsoleRenderer(colors=True)
 
     structlog.configure(
-        processors=shared_processors + [renderer],
+        processors=[*shared_processors, renderer],
         wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.value)),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),

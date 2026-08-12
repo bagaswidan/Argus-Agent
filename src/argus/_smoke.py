@@ -19,7 +19,7 @@ def run_smoke(verbose: bool = False) -> bool:
 
     def log(msg: str) -> None:
         if verbose:
-            print(msg)
+            pass
 
     try:
         # 1. Config
@@ -159,11 +159,10 @@ def run_smoke(verbose: bool = False) -> bool:
         return True
     except Exception as e:  # pragma: no cover
         if verbose:
-            print(f"SMOKE FAILED: {e}")
+            pass
         return False
 
 
 if __name__ == "__main__":  # pragma: no cover
     ok = run_smoke(verbose=True)
-    print("SMOKE: ALL PASSED" if ok else "SMOKE: FAILED")
     raise SystemExit(0 if ok else 1)

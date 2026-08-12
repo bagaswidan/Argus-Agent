@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class CritiqueSeverity(str, Enum):
+class CritiqueSeverity(StrEnum):
     """Severity of a critique finding."""
 
     INFO = "info"
@@ -19,7 +19,7 @@ class CritiqueSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class CritiqueCategory(str, Enum):
+class CritiqueCategory(StrEnum):
     """Category of critique finding."""
 
     CORRECTNESS = "correctness"  # Factual accuracy

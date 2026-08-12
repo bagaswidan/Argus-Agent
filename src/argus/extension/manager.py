@@ -6,9 +6,10 @@ Crash of one extension must not stop core (isolated by design).
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import logging
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,7 @@ from argus.extension.rpc import ExtensionRpc, RpcResponse
 logger = logging.getLogger(__name__)
 
 
-class ExtensionState(str, Enum):
+class ExtensionState(StrEnum):
     INSTALLED = "installed"
     VALIDATED = "validated"
     LOADED = "loaded"
@@ -32,8 +33,9 @@ class ExtensionState(str, Enum):
 
 
 class ExtensionManager:
-    """Manages extension lifecycle. Extensions are isolated; a crash in one
-    does not stop the core (each call is wrapped).
+    """Manages extension lifecycle.
+
+    Extensions are isolated; a crash in one does not stop the core (each call is wrapped).
     """
 
     def __init__(self) -> None:
@@ -123,10 +125,8 @@ class ExtensionManager:
         """Unload without restarting core (Spec §40)."""
         instance = self._instances.get(extension_id)
         if instance is not None:
-            try:
+            with contextlib.suppress(Exception):
                 instance.shutdown()
-            except Exception:
-                pass
         self._instances.pop(extension_id, None)
         self._states[extension_id] = ExtensionState.UNLOADED
         return True

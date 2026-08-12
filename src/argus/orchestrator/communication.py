@@ -85,7 +85,7 @@ class MessageBus:
         to_agent: str,
         message_type: str,
         payload: dict[str, Any],
-        timeout: float = 30.0,
+        timeout_seconds: float = 30.0,
     ) -> AgentMessage | None:
         """Send a request and wait for response."""
         correlation_id = str(uuid4())
@@ -103,8 +103,7 @@ class MessageBus:
         await self.send(request)
 
         try:
-            response = await asyncio.wait_for(response_queue.get(), timeout=timeout)
-            return response
+            return await asyncio.wait_for(response_queue.get(), timeout=timeout_seconds)
         except TimeoutError:
             return None
         finally:
@@ -118,7 +117,7 @@ class MessageBus:
             return [
                 m
                 for m in self._history
-                if m.from_agent == agent_id or m.to_agent == agent_id or m.to_agent == ""
+                if agent_id in (m.from_agent, m.to_agent) or m.to_agent == ""
             ][-limit:]
         return self._history[-limit:]
 

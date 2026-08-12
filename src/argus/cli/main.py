@@ -86,8 +86,8 @@ def curator(
 
     if not db:
         import tempfile
-        from pathlib import Path as _P
-        db = str(_P(tempfile.gettempdir()) / "argus_usage.json")
+        from pathlib import Path as _Path
+        db = str(_Path(tempfile.gettempdir()) / "argus_usage.json")
     tracker = create_usage_tracker(db)
     if action == "review":
         curator_engine = create_curator(tracker, stale_after_days=stale_days)
@@ -118,8 +118,8 @@ def dashboard(
 
     if not db:
         import tempfile
-        from pathlib import Path as _P
-        db = str(_P(tempfile.gettempdir()) / "argus_dashboard.db")
+        from pathlib import Path as _Path
+        db = str(_Path(tempfile.gettempdir()) / "argus_dashboard.db")
     store = create_dashboard_store(db)
     typer.echo(f"Argus Dashboard → http://{host}:{port}")
     typer.echo(f"Store          : {db}")

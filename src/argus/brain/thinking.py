@@ -5,6 +5,7 @@ No LLM calls are made; this is pure scoring logic.
 """
 from __future__ import annotations
 
+import math
 from enum import Enum, auto
 
 
@@ -46,8 +47,12 @@ _DESCRIPTIONS: dict[ThinkingMode, str] = {
     ThinkingMode.DEEP: "Heavy reasoning, explores many angles, ideal for complex ambiguous work.",
     ThinkingMode.ANALYTICAL: "Structured, data-driven thinking focused on root causes.",
     ThinkingMode.CREATIVE: "Divergent, exploratory thinking for novel or open-ended problems.",
-    ThinkingMode.DIAGNOSTIC: "Step-by-step fault isolation, good for debugging and troubleshooting.",
-    ThinkingMode.STRATEGIC: "High-level planning, considers long-term consequences and risk trade-offs.",
+    ThinkingMode.DIAGNOSTIC: (
+        "Step-by-step fault isolation, good for debugging and troubleshooting.",
+    ),
+    ThinkingMode.STRATEGIC: (
+        "High-level planning, considers long-term consequences and risk trade-offs.",
+    ),
 }
 
 # Representative profile: (complexity, ambiguity, novelty, risk)
@@ -98,7 +103,7 @@ class ThinkingSelector:
         ]:
             if not isinstance(value, (int, float)):
                 raise TypeError(f"{name} must be a number")
-            if value != value:  # NaN detection
+            if math.isnan(value):  # NaN detection
                 raise ValueError(f"{name} must not be NaN")
             if not (0.0 <= value <= 1.0):
                 raise ValueError(

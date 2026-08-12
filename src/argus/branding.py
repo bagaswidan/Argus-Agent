@@ -101,7 +101,7 @@ def wordmark_only() -> str:
 # Rendered JPEG — mata + 8 mata satelit (konstitusi) + visi + pipeline
 # ---------------------------------------------------------------------------
 _FONT_CANDIDATES = [
-    # Linux (Debian/Ubuntu)
+    # Linux
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     # macOS
@@ -163,7 +163,7 @@ def render_logo_jpeg(path: str | None = None, width: int = 1000) -> str:
     d.ellipse([cx - 180, eye_top, cx + 180, eye_top + 240], outline=GOLD_DIM, width=3)
     d.ellipse([cx - 108, eye_top + 55, cx + 108, eye_top + 185], outline=GOLD, width=4)
     d.ellipse([cx - 66, eye_top + 82, cx + 66, eye_top + 158], outline=GOLD_BRIGHT, width=3)
-    # pupil = GOAL
+    # pupil renders the GOAL text
     d.ellipse([cx - 30, eye_top + 100, cx + 30, eye_top + 140], fill=GOLD_BRIGHT)
     bbox = d.textbbox((0, 0), "GOAL", font=font_tiny)
     d.text(

@@ -10,21 +10,23 @@ import json
 import sys
 import time
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 from argus.common.errors import ArgusError
 from argus.common.events import Event, EventBus, EventPriority
 from argus.common.logging import get_logger
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
 logger = get_logger(__name__)
 
 
-class SandboxMode(str, Enum):
+class SandboxMode(StrEnum):
     """Execution isolation mode."""
 
     SUBPROCESS = "subprocess"  # Full process isolation (default)
@@ -451,13 +453,17 @@ print(json.dumps({{
 
     async def _flush_audit(self, entry: AuditEntry) -> None:
         """Write audit entry to log file."""
-        if self.audit_log_path:
-            try:
-                self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(self.audit_log_path, "a") as f:
-                    f.write(json.dumps(entry.to_dict()) + "\n")
-            except Exception as e:
-                logger.warning(f"Failed to write audit log: {e}")
+        if not self.audit_log_path:
+            return
+        try:
+            await asyncio.to_thread(self._write_audit_entry, entry)
+        except Exception as e:
+            logger.warning(f"Failed to write audit log: {e}")
+
+    def _write_audit_entry(self, entry: AuditEntry) -> None:
+        self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.audit_log_path, "a") as f:
+            f.write(json.dumps(entry.to_dict()) + "\n")
 
     def get_audit_log(self) -> list[AuditEntry]:
         """Get in-memory audit buffer."""
